@@ -1,0 +1,92 @@
+# 生产部署使用。
+# PostgreSQL 和 Redis 由 1Panel 作为服务器级共享服务管理。
+# 应用容器只绑定本机环回地址，由 1Panel OpenResty 提供反向代理。
+# 启动命令：docker compose --env-file .env -f compose.prod.yml up -d --wait
+name: pinjie-fullstack-blog
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    ports:
+      - "127.0.0.1:8100:8100"
+    env_file:
+      - apps/backend/.env
+    environment:
+      LOG_FILE_ENABLED: "false"
+      UPLOAD_LOCAL_ROOT: /app/storage/uploads
+      SETTINGS_MEDIA_ROOT: /app/storage/settings-media
+    volumes:
+      - backend_uploads:/app/storage
+    networks:
+      - default
+      - infrastructure
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health/ready', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  request-log-consumer:
+    image: ${BACKEND_IMAGE}
+    command: ["python", "-m", "scripts.consume_request_logs"]
+    env_file:
+      - apps/backend/.env
+    environment:
+      LOG_FILE_ENABLED: "false"
+    networks:
+      - default
+      - infrastructure
+    restart: unless-stopped
+    profiles: ["request-logs"]
+
+  web:
+    image: ${WEB_IMAGE}
+    ports:
+      - "127.0.0.1:3100:3100"
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8100
+      WEB_PUBLIC_ORIGIN: ${WEB_PUBLIC_ORIGIN:?WEB_PUBLIC_ORIGIN must be set}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3100/').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  admin:
+    image: ${ADMIN_IMAGE}
+    ports:
+      - "127.0.0.1:3101:3101"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3101/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  backend_uploads:
+
+networks:
+  infrastructure:
+    name: 1panel-network
+    external: true

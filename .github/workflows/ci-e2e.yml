@@ -1,0 +1,321 @@
+name: CI - Full Validation
+
+run-name: Full validation ${{ inputs.commit_sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full 40-character commit SHA to validate
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-validation-${{ inputs.commit_sha }}
+  cancel-in-progress: false
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      commit_sha: ${{ steps.input.outputs.commit_sha }}
+    steps:
+      - name: Validate immutable input
+        id: input
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          [[ "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.input.outputs.commit_sha }}
+      - name: Require default branch ancestry
+        env:
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git merge-base --is-ancestor "$EXPECTED_SHA" "origin/$DEFAULT_BRANCH"
+
+  frontend:
+    name: Validate and build ${{ matrix.app }}
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [admin, web]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.source.outputs.commit_sha }}
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: node scripts/ci/run-timed.mjs install pnpm install --frozen-lockfile
+      - run: node scripts/ci/run-timed.mjs unit pnpm --filter "@pinjie/$APP" test
+        env:
+          APP: ${{ matrix.app }}
+      - run: node scripts/ci/run-timed.mjs build pnpm --filter "@pinjie/$APP" build
+        env:
+          APP: ${{ matrix.app }}
+      - name: Package production output
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          if [[ "$APP" = "web" ]]; then
+            tar -czf "$RUNNER_TEMP/frontend-output.tar.gz" apps/web/.next/standalone
+          else
+            tar -czf "$RUNNER_TEMP/frontend-output.tar.gz" apps/admin/dist
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: production-${{ matrix.app }}-${{ github.run_id }}
+          overwrite: true
+          path: ${{ runner.temp }}/frontend-output.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+      - name: Save phase timing on success or failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: metrics-${{ matrix.app }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/validation-metrics/*.json
+          retention-days: 14
+
+  backend:
+    name: Backend pytest
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services: &test-services
+      postgres:
+        image: postgres:18.4-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pinjie_e2e_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d pinjie_e2e_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:8.10.0-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env: &test-environment
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/pinjie_e2e_test
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/pinjie_e2e_test
+      ENVIRONMENT: test
+      API_DOCS_ENABLED: "false"
+      REDIS_MODE: required
+      REDIS_URL: redis://127.0.0.1:6379/0
+      TEST_REDIS_URL: redis://127.0.0.1:6379/0
+      WEB_ORIGINS: '["http://127.0.0.1:3100","http://127.0.0.1:3100"]'
+      ADMIN_ORIGINS: '["http://127.0.0.1:3101","http://127.0.0.1:3101"]'
+      WEB_JWT_SECRET: e2e-web-jwt-secret-0000000000000001
+      ADMIN_JWT_SECRET: e2e-admin-jwt-secret-00000000000001
+      WEB_TOKEN_HMAC_KEY: e2e-web-hmac-key-00000000000000001
+      ADMIN_TOKEN_HMAC_KEY: e2e-admin-hmac-key-000000000000001
+      INITIAL_ADMIN_PASSWORD: stage-c-admin-password-2026
+      E2E_ADMIN_USERNAME: stage-admin
+      E2E_ADMIN_PASSWORD: stage-c-admin-password-2026
+      E2E_BACKEND_URL: http://127.0.0.1:8100
+    steps:
+      - name: Validate immutable input
+        id: input
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          WORKFLOW_BRANCH: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase 40-character SHA."
+            exit 1
+          fi
+          if [[ "$WORKFLOW_BRANCH" != "$DEFAULT_BRANCH" ]]; then
+            echo "Full validation must be dispatched from the default branch."
+            exit 1
+          fi
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout requested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.input.outputs.commit_sha }}
+
+      - name: Require commit from default branch
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$EXPECTED_SHA" "origin/$DEFAULT_BRANCH"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
+          python-version: "3.14"
+          version: "0.11.32"
+
+      - name: Sync Backend dependencies
+        working-directory: apps/backend
+        run: uv sync --locked --python 3.14
+
+      - name: Verify Python runtime
+        working-directory: apps/backend
+        run: uv run python -c "import sys; assert sys.version_info[:2] == (3, 14); print(sys.version)"
+
+      - name: Migrate isolated test database
+        working-directory: apps/backend
+        run: uv run alembic upgrade head
+
+      - name: Run Backend pytest
+        working-directory: apps/backend
+        run: node ../../scripts/ci/run-timed.mjs pytest uv run pytest
+
+      - name: Save Backend timing on success or failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: metrics-backend-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/validation-metrics/*.json
+          retention-days: 14
+
+  full-validation:
+    name: Production browser E2E and aggregate evidence
+    needs: [source, backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services: *test-services
+    env: *test-environment
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.source.outputs.commit_sha }}
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: true
+          python-version: "3.14"
+          version: "0.11.32"
+      - name: Prepare isolated Backend runtime
+        working-directory: apps/backend
+        run: |
+          uv sync --locked --python 3.14
+          uv run alembic upgrade head
+
+      - name: Prepare Stage C database and administrator
+        working-directory: apps/backend
+        run: |
+          uv run python -m scripts.set_test_registration --enabled --confirm-database pinjie_e2e_test
+          uv run python -m scripts.sync_permissions --apply --confirm-database pinjie_e2e_test
+          uv run python -m scripts.create_initial_admin --username "$E2E_ADMIN_USERNAME" --confirm-database pinjie_e2e_test
+
+      - name: Start Backend
+        working-directory: apps/backend
+        shell: bash
+        run: |
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8100 > "$RUNNER_TEMP/backend.log" 2>&1 &
+          ready=0
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8100/health/live; then ready=1; break; fi
+            sleep 1
+          done
+          if [[ "$ready" != "1" ]]; then
+            cat "$RUNNER_TEMP/backend.log"
+            exit 1
+          fi
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.17.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install locked workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: production-*-${{ github.run_id }}
+          path: ${{ runner.temp }}/production-output
+
+      - name: Restore verified production outputs
+        run: |
+          for app in admin web; do
+            tar -xzf "$RUNNER_TEMP/production-output/production-$app-$GITHUB_RUN_ID/frontend-output.tar.gz"
+          done
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser E2E
+        run: node scripts/ci/run-timed.mjs playwright pnpm test:e2e
+
+      - name: Write full validation evidence
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ needs.source.outputs.commit_sha }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/full-validation-evidence"
+          {
+            printf 'schema=pinjie-full-validation-v2\n'
+            printf 'commit_sha=%s\n' "$COMMIT_SHA"
+            printf 'workflow_run_id=%s\n' "$GITHUB_RUN_ID"
+            printf 'workflow_run_attempt=%s\n' "$GITHUB_RUN_ATTEMPT"
+            printf 'backend=pytest\n'
+            printf 'admin=vitest,production-build,nginx-dist\n'
+            printf 'web=vitest,production-build,standalone\n'
+            printf 'browser=playwright-chromium\n'
+            printf 'database=postgresql-18.4-alpine\n'
+            printf 'cache=redis-8.10.0-alpine\n'
+          } > "$RUNNER_TEMP/full-validation-evidence/full-validation.env"
+
+      - name: Upload full validation evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: full-validation-${{ needs.source.outputs.commit_sha }}
+          overwrite: true
+          path: ${{ runner.temp }}/full-validation-evidence/full-validation.env
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Save sanitized diagnostics on success or failure
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: diagnostics-full-validation-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/validation-metrics/*.json
+            test-results/e2e-summary.json
+          retention-days: 14

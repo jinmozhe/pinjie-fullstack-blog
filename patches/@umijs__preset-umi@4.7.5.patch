@@ -1,0 +1,45 @@
+diff --git a/dist/features/bundler/bundler.js b/dist/features/bundler/bundler.js
+index cd444413cd699d2f4c15f65a0191524a17458b1b..7001c5d9417201de864080717e034542596be878 100644
+--- a/dist/features/bundler/bundler.js
++++ b/dist/features/bundler/bundler.js
+@@ -24,7 +24,6 @@ __export(bundler_exports, {
+ module.exports = __toCommonJS(bundler_exports);
+ var import_lazyImportFromCurrentPkg = require("../../utils/lazyImportFromCurrentPkg");
+ var bundlerWebpack = (0, import_lazyImportFromCurrentPkg.lazyImportFromCurrentPkg)("@umijs/bundler-webpack");
+-var bundlerVite = (0, import_lazyImportFromCurrentPkg.lazyImportFromCurrentPkg)("@umijs/bundler-vite");
+ var bundler_default = (api) => {
+   api.describe({
+     // Don't occupy proprietary terms
+@@ -40,7 +39,7 @@ var bundler_default = (api) => {
+       return require(process.env.UTOOPACK);
+     }
+     if (bundler === "vite") {
+-      return bundlerVite;
++      throw new Error("Umi Vite bundler is disabled because its supported Vite version has known High vulnerabilities. Use the default Webpack bundler.");
+     }
+     return bundlerWebpack;
+   });
+diff --git a/dist/features/configPlugins/configPlugins.js b/dist/features/configPlugins/configPlugins.js
+index 0d07aed05ac216978c029168bbb8f70142bd9916..ffe9af7a100649fad1114db74165acc9cdaf1e97 100644
+--- a/dist/features/configPlugins/configPlugins.js
++++ b/dist/features/configPlugins/configPlugins.js
+@@ -32,7 +32,6 @@ __export(configPlugins_exports, {
+   default: () => configPlugins_default
+ });
+ module.exports = __toCommonJS(configPlugins_exports);
+-var import_schema = require("@umijs/bundler-vite/dist/schema");
+ var import_schema2 = require("@umijs/bundler-webpack/dist/schema");
+ var import_path = require("path");
+ var import_resolveProjectDep = require("../../utils/resolveProjectDep");
+@@ -89,7 +88,10 @@ var configPlugins_default = (api) => {
+     mfsu: { strategy: "eager" },
+     routeLoader: { moduleType: "esm" }
+   };
+-  const bundleSchemas = api.config.vite ? (0, import_schema.getSchemas)() : (0, import_schema2.getSchemas)();
++  if (api.config.vite) {
++    throw new Error("Umi Vite bundler is disabled because its supported Vite version has known High vulnerabilities. Use the default Webpack bundler.");
++  }
++  const bundleSchemas = (0, import_schema2.getSchemas)();
+   const extraSchemas = (0, import_schema3.getSchemas)();
+   const schemas = {
+     ...bundleSchemas,

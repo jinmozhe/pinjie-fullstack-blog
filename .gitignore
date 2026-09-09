@@ -1,0 +1,102 @@
+# ============================================================
+# Python / Backend
+# ============================================================
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.pytest-cache-runtime/
+.pytest-tmp/
+htmlcov/
+.coverage
+.coverage.*
+/apps/backend/build/
+/apps/backend/.eggs/
+/apps/backend/uploads/
+/apps/backend/.uploads-staging/
+/apps/backend/.uploads-trash/
+/apps/backend/settings-media/
+/apps/backend/.settings-media-staging/
+/apps/backend/.settings-media-trash/
+/apps/backend/.settings-media-operations/
+.e2e-uploads/
+.e2e-uploads-staging/
+..e2e-uploads-staging/
+/apps/backend/.e2e-uploads/
+/apps/backend/.e2e-uploads-staging/
+/apps/backend/..e2e-uploads-staging/
+
+# ============================================================
+# Node.js / 前端
+# ============================================================
+node_modules/
+.pnpm-store/
+
+# Next.js（apps/web）
+.next/
+out/
+/apps/web/next-env.d.ts
+
+# Umi Max / 前端构建产物
+dist/
+.vite/
+.umi/
+.umi-production/
+
+# Turborepo
+.turbo/
+
+# TypeScript 增量编译缓存
+*.tsbuildinfo
+
+# 测试与覆盖率产物
+coverage/
+playwright-report/
+test-results/
+.playwright-cli/
+
+# 本地临时参考资料
+/temp/
+
+# ============================================================
+# 环境变量（绝不入库）
+# ============================================================
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ============================================================
+# 依赖锁文件说明（保留，不排除）
+# pnpm-lock.yaml  → 必须提交
+# apps/backend/uv.lock → 必须提交
+# ============================================================
+
+# ============================================================
+# 日志
+# ============================================================
+logs/
+*.log
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ============================================================
+# 编辑器与 IDE
+# ============================================================
+.idea/
+.vscode/settings.json
+*.swp
+*.swo
+
+# ============================================================
+# 操作系统
+# ============================================================
+.DS_Store
+Thumbs.db
+Desktop.ini

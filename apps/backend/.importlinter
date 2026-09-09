@@ -1,0 +1,29 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:layered-backend]
+name = Backend layers point inward
+type = layers
+layers =
+    app.api
+    app.services
+    app.domains
+    app.db
+    app.core
+# HTTP routers are transport adapters colocated with their domain slices.
+ignore_imports =
+    app.domains.auth.router -> app.api.dependencies
+    app.domains.auth.router -> app.services.authentication
+    app.domains.admin.auth_router -> app.api.dependencies
+    app.domains.admin.auth_router -> app.services.authentication
+    app.domains.admin.management_router -> app.api.dependencies
+    app.domains.users.router -> app.api.dependencies
+    app.domains.assets.router -> app.api.dependencies
+    app.domains.settings.router -> app.api.dependencies
+    app.domains.blog.router -> app.api.dependencies
+
+[importlinter:contract:core-is-independent]
+name = Core does not import application layers
+type = forbidden
+source_modules = app.core
+forbidden_modules = app.api, app.domains, app.db

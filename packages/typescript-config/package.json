@@ -1,0 +1,6 @@
+{
+  "name": "@pinjie/typescript-config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "共享 TypeScript 基础配置"
+}

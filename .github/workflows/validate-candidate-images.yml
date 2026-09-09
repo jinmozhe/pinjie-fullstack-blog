@@ -1,0 +1,98 @@
+name: Validate Candidate Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      request_json:
+        description: Candidate request JSON generated from three CNB manifests and handoff Run IDs
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: candidate-images-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: candidate-image-validation
+    env:
+      CANDIDATE_REQUEST_JSON: ${{ inputs.request_json }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      DOCKER_CONFIG: /tmp/pinjie-candidate-docker-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Reject unconfigured blog candidate validation
+        shell: bash
+        run: |
+          echo "Blog candidate validation is disabled until independent release targets are configured and reviewed."
+          exit 1
+
+      - name: Validate immutable input
+        id: input
+        run: |
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          sha="$(jq -er '.test_commit | select(test("^[0-9a-f]{40}$"))' <<< "$CANDIDATE_REQUEST_JSON")"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.input.outputs.sha }}
+          fetch-depth: 0
+      - name: Require default branch ancestry
+        env:
+          EXPECTED_SHA: ${{ steps.input.outputs.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git merge-base --is-ancestor "$EXPECTED_SHA" "origin/$DEFAULT_BRANCH"
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+        with:
+          version: 11.17.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "24"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Authenticate with pull-only TCR credentials
+        env:
+          TCR_READ_USERNAME: ${{ secrets.TCR_READ_USERNAME }}
+          TCR_READ_PASSWORD: ${{ secrets.TCR_READ_PASSWORD }}
+        run: |
+          test -n "$TCR_READ_USERNAME"
+          test -n "$TCR_READ_PASSWORD"
+          mkdir -p "$DOCKER_CONFIG"
+          printf '%s' "$TCR_READ_PASSWORD" | docker login ccr.ccs.tencentyun.com --username "$TCR_READ_USERNAME" --password-stdin
+      - name: Verify source, test exact images, and generate deployment composition
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/release/candidate-images.mjs validate
+      - name: Clean owned candidate resources
+        if: ${{ always() }}
+        run: |
+          trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+          if [[ -f scripts/release/candidate-images.mjs ]]; then
+            node scripts/release/candidate-images.mjs cleanup
+          fi
+      - name: Upload validated deployment composition
+        if: ${{ success() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: deployment-composition-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/candidate-evidence/deployment-composition.json
+            ${{ runner.temp }}/candidate-evidence/images.env
+          if-no-files-found: error
+          retention-days: 90
+      - name: Upload sanitized candidate diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: candidate-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/candidate-evidence/candidate-summary.json
+            ${{ runner.temp }}/candidate-evidence/e2e-summary.json
+          retention-days: 14

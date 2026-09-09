@@ -1,0 +1,768 @@
+:root {
+  color: #1f2937;
+  background: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
+  background-color: #f5f7fa;
+}
+
+button,
+input,
+textarea {
+  letter-spacing: 0;
+}
+
+/* 顶部品牌 Logo */
+.ant-pro-global-header-logo img,
+.ant-pro-global-header-logo svg {
+  width: 28px;
+  height: 28px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.brand-mark {
+  display: flex;
+  height: 56px;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  color: #101828;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.brand-mark__symbol {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 6px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);
+  box-shadow: 0 2px 6px rgba(22, 119, 255, 0.28);
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.brand-mark__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #101828;
+  letter-spacing: -0.2px;
+}
+
+/* 顶部账号菜单触发器 */
+.account-trigger {
+  display: inline-flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: #344054;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.account-trigger:hover {
+  background: #f2f4f7 !important;
+  color: #1677ff !important;
+}
+
+.ant-pro-layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* 页面容器与卡片 */
+.workspace-page {
+  min-width: 0;
+}
+
+.workspace-page h1.page-title {
+  margin: 0;
+  color: #101828;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.workspace-page .ant-pro-page-container-children-container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-block-end: 24px;
+}
+
+.workspace-page .ant-pro-page-container-warp-page-header {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.workspace-panel {
+  border: 1px solid #f0f2f5;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 1px 6px -1px rgba(0, 0, 0, 0.02);
+}
+
+.workspace-panel > .ant-card-body {
+  min-width: 0;
+  padding: 20px 24px;
+}
+
+/* 表格与工具条优化 */
+.workspace-panel .ant-pro-table .ant-pro-card {
+  border: 0;
+  box-shadow: none;
+}
+
+.workspace-panel .ant-pro-table .ant-pro-card-body {
+  padding: 0;
+}
+
+.workspace-panel .ant-table-cell {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.responsive-data-table {
+  min-width: 0;
+}
+
+.responsive-data-table .ant-table-content {
+  max-width: 100%;
+  overflow-x: auto !important;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #c8ced8 transparent;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-data-table .ant-table-content::-webkit-scrollbar {
+  height: 6px;
+}
+
+.responsive-data-table .ant-table-content::-webkit-scrollbar-thumb {
+  border-radius: 3px;
+  background: #c8ced8;
+}
+
+.responsive-table-toolbar,
+.table-toolbar-desktop-filters {
+  display: flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.table-toolbar-mobile-lifecycle,
+.table-toolbar-mobile-filter {
+  display: none;
+}
+
+.mobile-filter-stack {
+  display: grid;
+  gap: 20px;
+}
+
+.mobile-filter-field {
+  display: grid;
+  gap: 8px;
+}
+
+.mobile-filter-field .ant-select {
+  width: 100%;
+}
+
+.admins-table .ant-table-measure-row,
+.responsive-data-table .ant-table-measure-row {
+  visibility: hidden;
+}
+
+.table-primary-cell {
+  display: grid;
+  min-width: 120px;
+  gap: 2px;
+}
+
+.role-primary-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.role-code-badge .ant-badge-count {
+  color: #475467;
+  background: #f2f4f7;
+  box-shadow: inset 0 0 0 1px #e4e7ec;
+  font-family: Consolas, monospace;
+  font-weight: 500;
+}
+
+.status-tag-button {
+  height: auto;
+  padding: 0;
+}
+
+.status-tag-button .ant-tag {
+  margin-inline-end: 0;
+}
+
+.asset-file-cell {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  min-width: 220px;
+  gap: 10px;
+}
+
+.asset-thumbnail,
+.asset-file-icon {
+  width: 44px;
+  height: 44px;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.asset-thumbnail {
+  object-fit: cover;
+}
+
+.asset-file-icon {
+  display: grid;
+  place-items: center;
+  color: #475467;
+  font-size: 20px;
+}
+
+.table-actions {
+  display: flex;
+  width: max-content;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-actions .ant-btn-link {
+  padding: 0 4px;
+  height: auto;
+  font-size: 13px;
+}
+
+.center-state {
+  display: grid;
+  min-height: 240px;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+}
+
+.settings-form-shell {
+  display: grid;
+  max-width: 760px;
+  gap: 24px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.settings-section-heading .ant-typography {
+  margin-bottom: 4px;
+}
+
+.site-logo-preview {
+  display: grid;
+  width: 120px;
+  aspect-ratio: 1;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.site-logo-preview .ant-image,
+.site-logo-preview img {
+  width: 100%;
+  height: 100%;
+}
+
+.site-logo-preview img {
+  object-fit: contain;
+}
+
+.settings-form {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-meta {
+  font-size: 13px;
+}
+
+.session-row {
+  display: grid;
+  gap: 6px;
+  padding: 14px 0;
+  border-bottom: 1px solid #f2f4f7;
+}
+
+.permission-tree-workbench {
+  display: grid;
+  gap: 12px;
+}
+
+.permission-tree-toolbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.permission-tree-tools {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.permission-tree-count {
+  white-space: nowrap;
+}
+
+.permission-tree-count strong {
+  color: #1677ff;
+  font-weight: 600;
+}
+
+.permission-tree-surface {
+  min-height: 420px;
+  overflow: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.permission-tree-surface .ant-tree {
+  padding: 10px 12px;
+}
+
+.permission-tree-surface .ant-empty {
+  margin-block: 128px 0;
+}
+
+.permission-tree-node {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-tree-name {
+  color: #101828;
+}
+
+.permission-tree-code {
+  color: #667085;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.permission-tree-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.permission-tree-group > span {
+  color: #98a2b3;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.modal-copy {
+  color: #475467;
+  line-height: 1.6;
+}
+
+/* 页脚 */
+.admin-footer {
+  text-align: center;
+  padding: 24px 0;
+  color: #475467;
+  font-size: 13px;
+}
+
+.bootstrap-state {
+  display: grid;
+  width: min(100% - 32px, 620px);
+  min-height: 100vh;
+  margin: auto;
+  place-items: center;
+}
+
+/* Admin 登录页：参考 Ant Design Pro 的无卡片上聚焦构图。 */
+.login-screen {
+  --login-primary: #1677ff;
+  --login-primary-hover: #4096ff;
+  --login-brand-red: #d32029;
+  --login-control-border: rgba(71, 84, 103, 0.12);
+  --login-submit-bg: #e6f4ff;
+  --login-submit-bg-hover: #bae0ff;
+  --login-submit-ink: #0958d9;
+  --login-ink: #172033;
+  --login-muted: #667085;
+  display: flex;
+  position: relative;
+  isolation: isolate;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: auto;
+  color: var(--login-ink);
+  background:
+    linear-gradient(128deg, rgba(22, 119, 255, 0.09) 0%, rgba(22, 119, 255, 0.025) 24%, transparent 46%),
+    linear-gradient(302deg, rgba(211, 32, 41, 0.06) 0%, rgba(211, 32, 41, 0.018) 28%, transparent 49%),
+    linear-gradient(154deg, transparent 28%, rgba(19, 194, 194, 0.05) 52%, transparent 74%),
+    linear-gradient(124deg, #f7fbff 0%, #ffffff 42%, #f7fbff 67%, #fff8f8 100%);
+}
+
+.login-screen::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 18%, rgba(22, 119, 255, 0.04) 38%, rgba(19, 194, 194, 0.035) 55%, rgba(211, 32, 41, 0.032) 72%, transparent 90%);
+  content: "";
+  pointer-events: none;
+}
+
+.login-content {
+  display: grid;
+  flex: 1;
+  width: 100%;
+  padding: clamp(72px, 15vh, 156px) 24px 28px;
+  place-items: start center;
+}
+
+.login-shell {
+  width: min(100%, 368px);
+}
+
+.login-top {
+  text-align: center;
+}
+
+.login-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 42px;
+}
+
+.login-header__logo {
+  display: block;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  background-color: var(--login-brand-red);
+  -webkit-mask: url("/logo.svg") center / contain no-repeat;
+  mask: url("/logo.svg") center / contain no-repeat;
+}
+
+.login-header__title {
+  margin: 0;
+  color: var(--login-ink);
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.3;
+}
+
+.login-desc {
+  margin: 12px 0 36px;
+  color: var(--login-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.login-main {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.login-alert {
+  margin-bottom: 20px;
+}
+
+.login-main .ant-form-item {
+  margin-bottom: 20px;
+}
+
+.login-main .ant-input-affix-wrapper.ant-input-filled {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-color: transparent;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.58);
+  font-size: 14px;
+  box-shadow: none;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.login-main .ant-input-affix-wrapper.ant-input-filled:hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.login-main .ant-input-affix-wrapper.ant-input-filled:focus,
+.login-main .ant-input-affix-wrapper.ant-input-filled.ant-input-affix-wrapper-focused {
+  border-color: rgba(22, 119, 255, 0.22);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.06);
+}
+
+.login-main .ant-input {
+  background: transparent;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.login-main .ant-input::placeholder {
+  color: #98a2b3;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.login-prefix-icon {
+  margin-inline-end: 4px;
+  color: #475467;
+  font-size: 16px;
+}
+
+.login-other-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 32px;
+  margin: -2px 0 18px;
+}
+
+.login-session-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--login-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.login-session-note .anticon {
+  color: var(--login-primary);
+}
+
+.login-forgot-hint {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  border-radius: 4px;
+  color: #98a2b3;
+  cursor: help;
+  font-size: 14px;
+  text-decoration: none;
+  transition: color 160ms ease, box-shadow 160ms ease;
+}
+
+.login-forgot-hint:hover,
+.login-forgot-hint:focus {
+  color: #667085;
+}
+
+.login-forgot-hint:focus {
+  outline: none;
+}
+
+.login-forgot-hint:focus-visible {
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+}
+
+.login-submit-btn.ant-btn-primary {
+  height: 42px;
+  margin: 0;
+  border-color: var(--login-submit-bg-hover);
+  border-radius: 7px;
+  color: var(--login-submit-ink);
+  background: var(--login-submit-bg);
+  font-size: 14px;
+  font-weight: 400;
+  text-shadow: none;
+  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.08);
+}
+
+.login-submit-btn.ant-btn-primary:not(:disabled):hover {
+  border-color: #91caff;
+  color: #003eb3;
+  background: var(--login-submit-bg-hover);
+}
+
+.login-submit-btn.ant-btn-primary:not(:disabled):active {
+  border-color: #69b1ff;
+  color: #003eb3;
+  background: #91caff;
+}
+
+.login-footer {
+  padding: 16px 24px 22px;
+  text-align: center;
+}
+
+.login-footer__copyright {
+  color: #98a2b3;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+body .ant-typography.ant-typography-secondary {
+  color: #667085;
+}
+
+body .ant-tag.ant-tag-success {
+  color: #389e0d;
+  background: #f6ffed;
+  border-color: #b7eb8f;
+}
+
+@media (max-width: 1439px) {
+  .workspace-page .ant-pro-page-container-children-container,
+  .workspace-page .ant-pro-page-container-warp-page-header {
+    padding-inline: 24px;
+  }
+}
+
+@media (max-width: 991px) {
+  .account-trigger span:last-child {
+    display: none;
+  }
+
+  .workspace-page .ant-pro-page-container-children-container,
+  .workspace-page .ant-pro-page-container-warp-page-header {
+    padding-inline: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .login-content {
+    padding: clamp(48px, 10vh, 84px) 20px 24px;
+  }
+  .login-shell {
+    width: 100%;
+  }
+  .login-main {
+    width: 100%;
+  }
+  .login-header__title {
+    font-size: 26px;
+  }
+  .login-desc {
+    margin-bottom: 30px;
+  }
+  .login-footer {
+    padding: 14px 20px 20px;
+  }
+  .permission-tree-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .permission-tree-tools {
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-direction: column;
+  }
+  .workspace-panel > .ant-card-body {
+    padding: 16px;
+  }
+  .responsive-data-table .ant-pro-table-list-toolbar-container {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .responsive-data-table .ant-pro-table-list-toolbar-left,
+  .responsive-data-table .ant-pro-table-list-toolbar-right {
+    width: 100%;
+    min-width: 0;
+  }
+  .responsive-data-table .ant-pro-table-list-toolbar-right {
+    margin-inline-start: 0;
+  }
+  .responsive-data-table .ant-pro-table-list-toolbar-right > div:has(> .responsive-table-toolbar) {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .responsive-table-toolbar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .table-toolbar-search {
+    order: -1;
+    width: 100% !important;
+  }
+  .table-toolbar-desktop-lifecycle,
+  .table-toolbar-desktop-filters {
+    display: none;
+  }
+  .table-toolbar-mobile-lifecycle {
+    display: flex;
+    min-width: 132px;
+    flex: 1 1 148px;
+  }
+  .table-toolbar-mobile-filter {
+    display: inline-flex;
+    flex: 1 1 auto;
+  }
+  .table-toolbar-create,
+  .table-toolbar-reset {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-height: 680px) {
+  .login-content {
+    align-items: start;
+    padding-top: 36px;
+  }
+}

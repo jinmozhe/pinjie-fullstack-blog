@@ -1,0 +1,194 @@
+.image-runner: &image-runner
+  tags: cnb:arch:amd64
+  cpus: 4
+
+.image-lock: &image-lock
+  expires: 7200
+  timeout: 7200
+  wait: true
+  cancel-in-progress: false
+
+.image-services: &image-services
+  - docker
+
+.image-imports: &image-imports []
+
+.image-docker: &image-docker
+  image: cnbcool/default-build-env@sha256:9622b58f682d7302292010af04048f59f7d9737d90fb070400c80f898f7b0983
+  volumes:
+    - /root/.cache/trivy:copy-on-write
+
+.image-env: &image-env
+  EXPECTED_CNB_REPOSITORY: pjwl/pinjie-fullstack-blog
+  EXPECTED_CNB_BRANCH: main
+
+.image-stages: &image-stages
+  - name: Reject unconfigured blog publishing
+    script: |
+      echo "Blog publishing is disabled until independent targets and credentials are configured and reviewed."
+      exit 1
+
+  - name: Validate immutable release context
+    script: bash ./scripts/ci/cnb-publish-images.sh validate
+
+  - name: Build and push run-unique candidate
+    script: bash ./scripts/ci/cnb-publish-images.sh build
+    timeout: 2h
+
+  - name: Scan candidate and generate SBOM
+    image: aquasec/trivy@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+    script: sh ./scripts/ci/cnb-scan-images.sh
+    timeout: 1h
+
+  - name: Enforce structured vulnerability gate
+    image: node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+    script: node ./scripts/ci/cnb-check-scan-evidence.mjs
+
+  - name: Publish immutable SHA tag
+    script: bash ./scripts/ci/cnb-publish-images.sh finalize
+    timeout: 30m
+
+  - name: Generate and validate image release evidence
+    image: node:24-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+    script: |
+      node ./scripts/ci/create-cnb-release-evidence.mjs
+      node ./scripts/ci/check-cnb-release-evidence.mjs \
+        --manifest "$EVIDENCE_ROOT/$IMAGE_KEY-release-manifest.json" \
+        --expected-image "$IMAGE_KEY" \
+        --expected-commit "$CNB_COMMIT" \
+        --expected-build-id "$CNB_BUILD_ID"
+      tar -czf .cnb/image-release-evidence.tar.gz -C "$EVIDENCE_ROOT" .
+
+  - name: Save image release evidence
+    image: cnbcool/attachments@sha256:3000e40e6495209ef056c374234f83505525257f799eaf51c9dcf8a8235efdb0
+    settings:
+      attachments:
+        - .cnb/image-release-evidence.tar.gz
+
+.image-fail-stages: &image-fail-stages
+  - name: Prepare image failure evidence
+    script: |
+      mkdir -p "$EVIDENCE_ROOT"
+      if [ ! -s "$EVIDENCE_ROOT/scan-failure-summary.txt" ]; then
+        printf 'CNB %s image release failed before a blocking vulnerability summary was generated.\n' \
+          "$IMAGE_KEY" > "$EVIDENCE_ROOT/release-failure-summary.txt"
+      fi
+      tar -czf .cnb/image-failure-evidence.tar.gz -C "$EVIDENCE_ROOT" .
+
+  - name: Save image failure evidence
+    image: cnbcool/attachments@sha256:3000e40e6495209ef056c374234f83505525257f799eaf51c9dcf8a8235efdb0
+    settings:
+      attachments:
+        - .cnb/image-failure-evidence.tar.gz
+
+.image-end-stages: &image-end-stages
+  - name: Remove temporary registry credentials
+    script: bash ./scripts/ci/cnb-publish-images.sh cleanup
+
+.backend-pipeline: &backend-pipeline
+  name: backend-image
+  runner: *image-runner
+  lock:
+    <<: *image-lock
+    key: pinjie-fullstack-blog-tcr-backend-main
+  services: *image-services
+  imports: *image-imports
+  docker: *image-docker
+  env:
+    <<: *image-env
+    IMAGE_KEY: backend
+    RELEASE_PIPELINE: backend-image
+    EVIDENCE_ROOT: .cnb/evidence/backend
+    DOCKER_CONFIG: /tmp/pinjie-cnb-docker-config-backend
+  stages: *image-stages
+  failStages: *image-fail-stages
+  endStages: *image-end-stages
+
+.web-pipeline: &web-pipeline
+  name: web-image
+  runner: *image-runner
+  lock:
+    <<: *image-lock
+    key: pinjie-fullstack-blog-tcr-web-main
+  services: *image-services
+  imports: *image-imports
+  docker: *image-docker
+  env:
+    <<: *image-env
+    IMAGE_KEY: web
+    RELEASE_PIPELINE: web-image
+    EVIDENCE_ROOT: .cnb/evidence/web
+    DOCKER_CONFIG: /tmp/pinjie-cnb-docker-config-web
+  stages: *image-stages
+  failStages: *image-fail-stages
+  endStages: *image-end-stages
+
+.admin-pipeline: &admin-pipeline
+  name: admin-image
+  runner: *image-runner
+  lock:
+    <<: *image-lock
+    key: pinjie-fullstack-blog-tcr-admin-main
+  services: *image-services
+  imports: *image-imports
+  docker: *image-docker
+  env:
+    <<: *image-env
+    IMAGE_KEY: admin
+    RELEASE_PIPELINE: admin-image
+    EVIDENCE_ROOT: .cnb/evidence/admin
+    DOCKER_CONFIG: /tmp/pinjie-cnb-docker-config-admin
+  stages: *image-stages
+  failStages: *image-fail-stages
+  endStages: *image-end-stages
+
+main:
+  push:
+    backend-image:
+      <<: *backend-pipeline
+      ifModify:
+        - apps/backend/**
+        - .dockerignore
+        - .cnb.yml
+        - scripts/ci/cnb-*.sh
+        - scripts/ci/*cnb*evidence*.mjs
+
+    web-image:
+      <<: *web-pipeline
+      ifModify:
+        - apps/web/**
+        - apps/admin/package.json
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .pnpmfile.cjs
+        - packages/**
+        - patches/**
+        - .dockerignore
+        - .cnb.yml
+        - scripts/ci/cnb-*.sh
+        - scripts/ci/*cnb*evidence*.mjs
+
+    admin-image:
+      <<: *admin-pipeline
+      ifModify:
+        - apps/admin/**
+        - apps/web/package.json
+        - package.json
+        - pnpm-lock.yaml
+        - pnpm-workspace.yaml
+        - .pnpmfile.cjs
+        - packages/**
+        - patches/**
+        - .dockerignore
+        - .cnb.yml
+        - scripts/ci/cnb-*.sh
+        - scripts/ci/*cnb*evidence*.mjs
+
+  web_trigger_full_release:
+    backend-image:
+      <<: *backend-pipeline
+    web-image:
+      <<: *web-pipeline
+    admin-image:
+      <<: *admin-pipeline

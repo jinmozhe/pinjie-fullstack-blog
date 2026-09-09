@@ -1,0 +1,148 @@
+name: CI - Backend
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend-state:
+    name: Backend state and boundaries
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.state.outputs.backend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate workspace state
+        id: state
+        shell: pwsh
+        run: ./scripts/ci/check-workspace-state.ps1 -GitHubOutputPath $env:GITHUB_OUTPUT
+
+      - name: Validate module boundaries
+        shell: pwsh
+        run: ./scripts/ci/check-module-boundaries.ps1
+
+      - name: Report empty Backend
+        if: steps.state.outputs.backend == 'empty'
+        shell: bash
+        run: echo "Backend is an explicit empty skeleton. Application quality checks have not passed."
+
+  backend-quality:
+    name: Backend quality
+    needs: backend-state
+    if: needs.backend-state.outputs.backend == 'ready'
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: test
+      # Configuration validation only; this job starts no PostgreSQL or Redis service.
+      DATABASE_URL: postgresql+asyncpg://ci:ci@127.0.0.1:5432/pinjie_ci_test
+      TEST_DATABASE_URL: postgresql+asyncpg://ci:ci@127.0.0.1:5432/pinjie_ci_test
+      REDIS_MODE: required
+      REDIS_URL: redis://127.0.0.1:6379/15
+      TEST_REDIS_URL: redis://127.0.0.1:6379/15
+      WEB_JWT_SECRET: ci-web-jwt-secret-00000000000000001
+      ADMIN_JWT_SECRET: ci-admin-jwt-secret-000000000000001
+      WEB_TOKEN_HMAC_KEY: ci-web-hmac-key-000000000000000001
+      ADMIN_TOKEN_HMAC_KEY: ci-admin-hmac-key-0000000000000001
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+        with:
+          enable-cache: true
+          python-version: "3.14"
+          version: "0.11.32"
+
+      - name: Install CPython 3.14
+        working-directory: apps/backend
+        run: uv python install 3.14
+
+      - name: Sync locked dependencies
+        working-directory: apps/backend
+        run: uv sync --locked --python 3.14
+
+      - name: Verify Python runtime
+        working-directory: apps/backend
+        run: uv run python -c "import sys; assert sys.version_info[:2] == (3, 14); print(sys.version)"
+
+      - name: Ruff
+        working-directory: apps/backend
+        run: uv run ruff check .
+
+      - name: Ruff format
+        working-directory: apps/backend
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        working-directory: apps/backend
+        run: uv run mypy app
+
+      - name: Import boundaries
+        working-directory: apps/backend
+        run: uv run lint-imports
+
+      - name: Compile Python sources
+        working-directory: apps/backend
+        run: uv run python -m compileall -q app alembic scripts
+
+      - name: Import application
+        working-directory: apps/backend
+        run: uv run python -c "from app.main import app; schema = app.openapi(); print('OPENAPI_OK', len(schema.get('paths', {})))"
+
+      - name: Export OpenAPI contract
+        working-directory: apps/backend
+        run: uv run python scripts/export_openapi.py --output ../../openapi.json
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.17.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install locked workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Regenerate API Client
+        run: pnpm generate-api
+
+      - name: Reject generated contract drift
+        run: git diff --exit-code -- openapi.json packages/api-client/src
+
+  breaking-contract:
+    name: OpenAPI breaking changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base branch
+        shell: bash
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "$BASE_REF"
+
+      - name: Reject breaking OpenAPI changes
+        uses: oasdiff/oasdiff-action/breaking@033c15c845bef10f148afb0fa781bf1b2a7fe1bf # v0.1.12
+        with:
+          base: origin/${{ github.base_ref }}:openapi.json
+          revision: HEAD:openapi.json
+          fail-on: ERR
+          review: false

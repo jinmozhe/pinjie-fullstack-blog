@@ -1,0 +1,13 @@
+diff --git a/dist/server/server.js b/dist/server/server.js
+index 2073bbf4abdbe2ac89ca80fc351b12b9e9c5df56..f804495488d454634f585ff2fbc74685ee43407e 100644
+--- a/dist/server/server.js
++++ b/dist/server/server.js
+@@ -217,7 +217,7 @@ async function createServer(opts) {
+   });
+   const protocol = userConfig.https ? "https:" : "http:";
+   const port = opts.port || 8e3;
+-  server.listen(port, () => {
++  server.listen(port, opts.host, () => {
+     const banner = (0, import_utils.getDevBanner)(protocol, opts.host, port);
+     console.log(banner.before);
+     import_utils.logger.ready(banner.main);

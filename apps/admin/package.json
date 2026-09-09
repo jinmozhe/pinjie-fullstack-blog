@@ -1,0 +1,39 @@
+{
+  "name": "@pinjie/admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/run-umi.mjs",
+    "build": "max build",
+    "preview": "node scripts/run-umi.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test scripts/run-umi.node-test.mjs && vitest run --config vitest.config.ts --coverage --pool=threads --maxWorkers=1 --no-file-parallelism"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.3.2",
+    "@ant-design/pro-components": "^3.1.14-2",
+    "@pinjie/api-client": "workspace:*",
+    "@tanstack/react-query": "^5.101.4",
+    "@umijs/max": "^4.7.3",
+    "antd": "^6.6.0",
+    "antd-style": "^4.1.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@pinjie/eslint-config": "workspace:*",
+    "@pinjie/typescript-config": "workspace:*",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^9.0.0",
+    "jsdom": "^27.1.0",
+    "msw": "^2.10.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

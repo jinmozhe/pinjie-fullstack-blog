@@ -1,0 +1,53 @@
+name: CI - Governance
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  governance:
+    name: Governance and guard tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Validate text assets
+        shell: pwsh
+        run: ./scripts/ci/check-text-files.ps1
+
+      - name: Validate workspace state
+        shell: pwsh
+        run: ./scripts/ci/check-workspace-state.ps1
+
+      - name: Validate module boundaries
+        shell: pwsh
+        run: ./scripts/ci/check-module-boundaries.ps1
+
+      - name: Test governance guards
+        shell: pwsh
+        run: ./scripts/ci/test-governance-guards.ps1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.17.0
+
+      - name: Install Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Markdown
+        run: pnpm lint:md

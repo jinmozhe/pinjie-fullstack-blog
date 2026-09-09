@@ -1,0 +1,347 @@
+name: Handoff Source to CNB
+
+run-name: CNB handoff ${{ inputs.commit_sha }} (${{ inputs.validation_mode }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full 40-character commit SHA to hand off to CNB
+        required: true
+        type: string
+      validation_mode:
+        description: Validation mode; strict requires Full Validation evidence
+        required: true
+        default: strict
+        type: choice
+        options:
+          - strict
+          - fast
+      fast_mode_reason:
+        description: Required in fast mode; one line, no secrets or sensitive data
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: cnb-source-handoff-main
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate immutable input
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      commit_sha: ${{ steps.input.outputs.commit_sha }}
+      validation_mode: ${{ steps.release-mode.outputs.validation_mode }}
+      validation_run_id: ${{ steps.full-validation.outputs.validation_run_id }}
+    steps:
+      - name: Reject unconfigured blog publishing
+        shell: bash
+        run: |
+          echo "Blog publishing is disabled. Configure and review this repository's independent release targets first."
+          exit 1
+
+      - name: Validate commit SHA
+        id: input
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase 40-character SHA."
+            exit 1
+          fi
+          echo "commit_sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Validate release mode
+        id: release-mode
+        shell: bash
+        env:
+          FAST_MODE_REASON: ${{ inputs.fast_mode_reason }}
+          VALIDATION_MODE: ${{ inputs.validation_mode }}
+        run: |
+          case "$VALIDATION_MODE" in
+            strict|fast) ;;
+            *)
+              echo "validation_mode must be strict or fast."
+              exit 1
+              ;;
+          esac
+
+          if [[ "$VALIDATION_MODE" == "fast" ]]; then
+            if [[ -z "${FAST_MODE_REASON//[[:space:]]/}" ]]; then
+              echo "fast_mode_reason is required in fast mode."
+              exit 1
+            fi
+            if [[ "$FAST_MODE_REASON" == *$'\n'* || "$FAST_MODE_REASON" == *$'\r'* ]]; then
+              echo "fast_mode_reason must contain one line."
+              exit 1
+            fi
+            if (( ${#FAST_MODE_REASON} > 200 )); then
+              echo "fast_mode_reason must not exceed 200 characters."
+              exit 1
+            fi
+          fi
+
+          echo "validation_mode=$VALIDATION_MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Require workflow from default branch
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+
+      - name: Checkout requested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.input.outputs.commit_sha }}
+
+      - name: Require commit from default branch
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$EXPECTED_SHA" "origin/$DEFAULT_BRANCH"
+
+      - name: Require successful source workflows
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for workflow in ci-governance.yml ci-backend.yml ci-frontend.yml security.yml; do
+            response="$(curl --fail-with-body --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?head_sha=$EXPECTED_SHA&event=push&status=completed&per_page=100")"
+            if ! jq -e 'any(.workflow_runs[]; .conclusion == "success")' <<< "$response" >/dev/null; then
+              echo "No successful push run of $workflow exists for $EXPECTED_SHA."
+              exit 1
+            fi
+          done
+
+      - name: Require successful full validation evidence
+        id: full-validation
+        if: ${{ steps.release-mode.outputs.validation_mode == 'strict' }}
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          artifact_name="full-validation-$EXPECTED_SHA"
+          response="$(curl --fail-with-body --silent --show-error \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts?name=$artifact_name&per_page=100")"
+          mapfile -t candidates < <(jq -r \
+            '.artifacts[] | select(.expired == false and .workflow_run.id != null) | [.id, .workflow_run.id] | @tsv' \
+            <<< "$response")
+          if [[ "${#candidates[@]}" -eq 0 ]]; then
+            echo "No unexpired full validation artifact exists for $EXPECTED_SHA."
+            exit 1
+          fi
+
+          evidence_root="$(mktemp -d)"
+          for candidate in "${candidates[@]}"; do
+            IFS=$'\t' read -r artifact_id run_id <<< "$candidate"
+            run_response="$(curl --fail-with-body --silent --show-error \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runs/$run_id")"
+            if ! jq -e \
+              --arg default_branch "$DEFAULT_BRANCH" \
+              '.event == "workflow_dispatch" and .conclusion == "success" and .head_branch == $default_branch and .path == ".github/workflows/ci-e2e.yml"' \
+              <<< "$run_response" >/dev/null; then
+              continue
+            fi
+
+            candidate_dir="$evidence_root/$artifact_id"
+            mkdir -p "$candidate_dir"
+            curl --fail-with-body --silent --show-error --location \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id/zip" \
+              --output "$candidate_dir/evidence.zip"
+            unzip -q "$candidate_dir/evidence.zip" -d "$candidate_dir/content"
+            evidence="$candidate_dir/content/full-validation.env"
+            if [[ ! -f "$evidence" ]]; then
+              continue
+            fi
+            if ! grep -Fxq 'schema=pinjie-full-validation-v2' "$evidence"; then
+              continue
+            fi
+
+            if pwsh -NoLogo -NoProfile -File ./scripts/ci/check-full-validation-evidence.ps1 \
+              -ManifestPath "$evidence" \
+              -ExpectedCommitSha "$EXPECTED_SHA" \
+              -ExpectedRunId "$run_id"; then
+              echo "validation_run_id=$run_id" >> "$GITHUB_OUTPUT"
+              echo "Full validation run: $run_id" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          done
+
+          echo "No trustworthy full validation evidence matches $EXPECTED_SHA."
+          exit 1
+
+      - name: Record validation decision
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ steps.input.outputs.commit_sha }}
+          FAST_MODE_REASON: ${{ inputs.fast_mode_reason }}
+          VALIDATION_MODE: ${{ steps.release-mode.outputs.validation_mode }}
+          VALIDATION_RUN_ID: ${{ steps.full-validation.outputs.validation_run_id }}
+        run: |
+          {
+            echo "### CNB source handoff validation"
+            echo
+            echo "- Commit: \`$EXPECTED_SHA\`"
+            echo "- Actor: \`$GITHUB_ACTOR\`"
+            echo "- Validation mode: \`$VALIDATION_MODE\`"
+            if [[ "$VALIDATION_MODE" == "strict" ]]; then
+              echo "- Full Validation Artifact: verified"
+              echo "- Full Validation Run ID: \`$VALIDATION_RUN_ID\`"
+            else
+              printf -v escaped_reason '%q' "$FAST_MODE_REASON"
+              echo "- Full Validation Artifact: not required by explicit fast mode"
+              echo "- Fast mode reason: \`$escaped_reason\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require complete application state
+        id: state
+        shell: pwsh
+        run: ./scripts/ci/check-workspace-state.ps1 -GitHubOutputPath $env:GITHUB_OUTPUT
+
+      - name: Reject non-ready applications
+        shell: bash
+        env:
+          ADMIN_STATE: ${{ steps.state.outputs.admin }}
+          BACKEND_STATE: ${{ steps.state.outputs.backend }}
+          WEB_STATE: ${{ steps.state.outputs.web }}
+        run: |
+          for state in "$BACKEND_STATE" "$WEB_STATE" "$ADMIN_STATE"; do
+            test "$state" = "ready"
+          done
+
+      - name: Validate module boundaries
+        shell: pwsh
+        run: ./scripts/ci/check-module-boundaries.ps1
+
+  handoff:
+    name: Fast-forward CNB main
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: cnb-source-handoff
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout requested commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.commit_sha }}
+
+      - name: Validate CNB handoff configuration
+        shell: bash
+        env:
+          CNB_PUSH_TOKEN: ${{ secrets.CNB_PUSH_TOKEN }}
+          CNB_PUSH_USERNAME: ${{ vars.CNB_PUSH_USERNAME }}
+          CNB_RELEASE_BRANCH: ${{ vars.CNB_RELEASE_BRANCH }}
+          CNB_REPOSITORY_URL: ${{ vars.CNB_REPOSITORY_URL }}
+        run: |
+          set -euo pipefail
+          test "$CNB_REPOSITORY_URL" = "https://cnb.cool/pjwl/pinjie-fullstack-blog"
+          test "$CNB_RELEASE_BRANCH" = "main"
+          test "$CNB_PUSH_USERNAME" = "cnb"
+          test -n "$CNB_PUSH_TOKEN"
+
+      - name: Push approved commit to CNB
+        shell: bash
+        env:
+          CNB_PUSH_TOKEN: ${{ secrets.CNB_PUSH_TOKEN }}
+          CNB_PUSH_USERNAME: ${{ vars.CNB_PUSH_USERNAME }}
+          CNB_RELEASE_BRANCH: ${{ vars.CNB_RELEASE_BRANCH }}
+          CNB_REPOSITORY_URL: ${{ vars.CNB_REPOSITORY_URL }}
+          EXPECTED_SHA: ${{ needs.validate.outputs.commit_sha }}
+          VALIDATION_MODE: ${{ needs.validate.outputs.validation_mode }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+
+          askpass="$(mktemp)"
+          cleanup() {
+            rm -f "$askpass"
+          }
+          trap cleanup EXIT
+          cat > "$askpass" <<'EOF'
+          #!/usr/bin/env bash
+          case "$1" in
+            *Username*) printf '%s\n' "$CNB_PUSH_USERNAME" ;;
+            *Password*) printf '%s\n' "$CNB_PUSH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          EOF
+          chmod 700 "$askpass"
+
+          git remote add cnb "$CNB_REPOSITORY_URL"
+          remote_sha="$(GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
+            git ls-remote --heads cnb "refs/heads/$CNB_RELEASE_BRANCH" | awk '{print $1}')"
+          if [[ -n "$remote_sha" ]]; then
+            [[ "$remote_sha" =~ ^[0-9a-f]{40}$ ]]
+            GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
+              git fetch --no-tags cnb "refs/heads/$CNB_RELEASE_BRANCH:refs/remotes/cnb/$CNB_RELEASE_BRANCH"
+            git merge-base --is-ancestor "$remote_sha" "$EXPECTED_SHA"
+          fi
+
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
+            git push cnb "$EXPECTED_SHA:refs/heads/$CNB_RELEASE_BRANCH"
+          actual_sha="$(GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
+            git ls-remote --heads cnb "refs/heads/$CNB_RELEASE_BRANCH" | awk '{print $1}')"
+          test "$actual_sha" = "$EXPECTED_SHA"
+
+          {
+            echo "Approved commit: $EXPECTED_SHA"
+            echo "Validation mode: $VALIDATION_MODE"
+            echo "CNB repository: $CNB_REPOSITORY_URL"
+            echo "CNB branch: $CNB_RELEASE_BRANCH"
+            echo "CNB build logs: $CNB_REPOSITORY_URL/-/build/logs"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write durable handoff evidence
+        env:
+          EXPECTED_SHA: ${{ needs.validate.outputs.commit_sha }}
+          VALIDATION_MODE: ${{ needs.validate.outputs.validation_mode }}
+          VALIDATION_RUN_ID: ${{ needs.validate.outputs.validation_run_id }}
+          FAST_MODE_REASON: ${{ inputs.fast_mode_reason }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/handoff-evidence"
+          jq -n --arg sha "$EXPECTED_SHA" --arg mode "$VALIDATION_MODE" \
+            --arg reason "$FAST_MODE_REASON" --arg validation "$VALIDATION_RUN_ID" \
+            --arg run "$GITHUB_RUN_ID" --arg attempt "$GITHUB_RUN_ATTEMPT" \
+            '{schema:"pinjie-source-handoff-v1",commit_sha:$sha,mode:$mode,reason:$reason,full_validation_run_id:$validation,run_id:$run,run_attempt:$attempt}' \
+            > "$RUNNER_TEMP/handoff-evidence/handoff.json"
+
+      - name: Upload durable handoff evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: source-handoff-${{ needs.validate.outputs.commit_sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/handoff-evidence/handoff.json
+          if-no-files-found: error
+          retention-days: 90

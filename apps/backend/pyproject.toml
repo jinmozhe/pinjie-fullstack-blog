@@ -1,0 +1,73 @@
+[project]
+name = "pinjie-fullstack-backend"
+version = "0.1.0"
+description = "Pinjie Fullstack Blog - FastAPI 标准后端"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "alembic>=1.16.0",
+    "asyncpg>=0.30.0",
+    "fastapi>=0.116.0",
+    "loguru>=0.7.3",
+    "markdown-it-py==4.2.0",
+    "orjson>=3.11.0",
+    "pillow>=12.1,<13",
+    "pwdlib[argon2]>=0.3,<1",
+    "pydantic-settings>=2.10.0",
+    "pyjwt>=2.13,<3",
+    "python-multipart>=0.0.20,<1",
+    "redis>=6.4.0",
+    "sqlalchemy[asyncio]>=2.0.43",
+    "tzdata>=2026.3",
+    "ua-parser[regex]>=1.0.2",
+    "uvicorn[standard]>=0.35.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "import-linter>=2.6",
+    "mypy>=1.17.1",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "pytest-socket>=0.7.0",
+    "ruff>=0.12.10",
+]
+
+[tool.uv]
+exclude-newer = "7 days"
+required-version = "==0.11.32"
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501", "N818"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--strict-markers --strict-config --basetemp=.pytest-tmp --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=90"
+markers = [
+    "integration: requires the isolated PostgreSQL test database",
+]
+testpaths = ["tests"]
+cache_dir = ".pytest-cache-runtime"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

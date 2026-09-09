@@ -1,0 +1,21 @@
+# 默认仓库所有者
+* @jinmozhe
+
+# 治理、需求、架构和计划
+/AGENTS.md @jinmozhe
+/.agents/ @jinmozhe
+/docs/ @jinmozhe
+/plans/ @jinmozhe
+/SECURITY.md @jinmozhe
+
+# 安全、供应链、发布和生产配置
+/.github/ @jinmozhe
+/compose.prod.yml @jinmozhe
+/.env.example @jinmozhe
+
+# 应用、契约和数据库迁移
+/apps/backend/ @jinmozhe
+/apps/admin/ @jinmozhe
+/apps/web/ @jinmozhe
+/packages/api-client/ @jinmozhe
+/openapi.json @jinmozhe

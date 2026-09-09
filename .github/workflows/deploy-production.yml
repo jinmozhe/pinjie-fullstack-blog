@@ -1,0 +1,184 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full 40-character source commit SHA for all three images
+        required: true
+        type: string
+      backend_digest:
+        description: Backend image digest, sha256 followed by 64 lowercase hex characters
+        required: true
+        type: string
+      web_digest:
+        description: Web image digest, sha256 followed by 64 lowercase hex characters
+        required: true
+        type: string
+      admin_digest:
+        description: Admin image digest, sha256 followed by 64 lowercase hex characters
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy fixed image digests
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reject unconfigured blog deployment
+        shell: bash
+        run: |
+          echo "Blog deployment is disabled. Configure and review independent images, host, database and storage first."
+          exit 1
+
+      - name: Checkout release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.commit_sha }}
+
+      - name: Validate release source
+        id: source
+        shell: bash
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [[ ! "$COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be a full lowercase 40-character SHA."
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "$COMMIT_SHA"
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          git merge-base --is-ancestor "$COMMIT_SHA" "origin/$DEFAULT_BRANCH"
+          echo "compose_sha256=$(sha256sum compose.prod.yml | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Validate deployment inputs
+        shell: bash
+        env:
+          ADMIN_DIGEST: ${{ inputs.admin_digest }}
+          BACKEND_DIGEST: ${{ inputs.backend_digest }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          PRODUCTION_DEPLOYMENT_ENABLED: ${{ vars.PRODUCTION_DEPLOYMENT_ENABLED }}
+          WEB_DIGEST: ${{ inputs.web_digest }}
+        run: |
+          if [[ "$PRODUCTION_DEPLOYMENT_ENABLED" != "true" ]]; then
+            echo "Set the production environment variable PRODUCTION_DEPLOYMENT_ENABLED to true before deployment."
+            exit 1
+          fi
+          if [[ -z "$DEPLOY_PATH" || "$DEPLOY_PATH" != /* ]]; then
+            echo "DEPLOY_PATH must be a non-empty absolute path."
+            exit 1
+          fi
+          for digest in "$BACKEND_DIGEST" "$WEB_DIGEST" "$ADMIN_DIGEST"; do
+            if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "Every image input must be a full sha256 digest."
+              exit 1
+            fi
+          done
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify image digests belong to release commit
+        shell: bash
+        env:
+          ADMIN_DIGEST: ${{ inputs.admin_digest }}
+          BACKEND_DIGEST: ${{ inputs.backend_digest }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          WEB_DIGEST: ${{ inputs.web_digest }}
+        run: |
+          verify_digest() {
+            local image="$1"
+            local expected="$2"
+            local reference="ghcr.io/$IMAGE_OWNER/$image:sha-$COMMIT_SHA"
+            local actual
+            actual="$(docker buildx imagetools inspect "$reference" | awk '$1 == "Digest:" { print $2; exit }')"
+            if [[ -z "$actual" || "$actual" != "$expected" ]]; then
+              echo "$reference resolved to ${actual:-no digest}, expected $expected."
+              exit 1
+            fi
+          }
+          verify_digest pinjie-blog-backend "$BACKEND_DIGEST"
+          verify_digest pinjie-blog-web "$WEB_DIGEST"
+          verify_digest pinjie-blog-admin "$ADMIN_DIGEST"
+
+      - name: Deploy approved digests
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
+        env:
+          ADMIN_IMAGE: ghcr.io/${{ github.repository_owner }}/pinjie-blog-admin@${{ inputs.admin_digest }}
+          BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/pinjie-blog-backend@${{ inputs.backend_digest }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          EXPECTED_COMPOSE_SHA256: ${{ steps.source.outputs.compose_sha256 }}
+          RELEASE_COMMIT_SHA: ${{ inputs.commit_sha }}
+          WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/pinjie-blog-web@${{ inputs.web_digest }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: ADMIN_IMAGE,BACKEND_IMAGE,DEPLOY_PATH,EXPECTED_COMPOSE_SHA256,RELEASE_COMMIT_SHA,WEB_IMAGE
+          script: |
+            set -eu
+            cd -- "$DEPLOY_PATH"
+            test -f apps/backend/.env
+            test -f .env
+            actual_compose_sha256="$(sha256sum compose.prod.yml | cut -d' ' -f1)"
+            test "$actual_compose_sha256" = "$EXPECTED_COMPOSE_SHA256"
+            umask 077
+            image_env="$(mktemp .pinjie-deploy-images.XXXXXX)"
+            trap 'rm -f "$image_env"' EXIT
+            grep -E '^WEB_PUBLIC_ORIGIN=' .env > "$image_env"
+            printf 'BACKEND_IMAGE=%s\nWEB_IMAGE=%s\nADMIN_IMAGE=%s\n' "$BACKEND_IMAGE" "$WEB_IMAGE" "$ADMIN_IMAGE" >> "$image_env"
+            docker compose --env-file "$image_env" -f compose.prod.yml config --quiet
+            docker compose --env-file "$image_env" -f compose.prod.yml pull
+            docker compose --env-file "$image_env" -f compose.prod.yml up -d --wait --wait-timeout 120
+            docker compose --env-file "$image_env" -f compose.prod.yml ps
+            verify_running_image() {
+              service="$1"
+              expected="$2"
+              container_id="$(docker compose --env-file "$image_env" -f compose.prod.yml ps -q "$service")"
+              test -n "$container_id"
+              actual="$(docker inspect --format '{{.Config.Image}}' "$container_id")"
+              test "$actual" = "$expected"
+            }
+            verify_running_image backend "$BACKEND_IMAGE"
+            verify_running_image web "$WEB_IMAGE"
+            verify_running_image admin "$ADMIN_IMAGE"
+            mv -f "$image_env" .env
+            trap - EXIT
+            printf 'release_commit_sha=%s\ncompose_sha256=%s\n' "$RELEASE_COMMIT_SHA" "$EXPECTED_COMPOSE_SHA256" > .deployment-version
+
+      - name: Record deployment inputs
+        shell: bash
+        env:
+          ADMIN_DIGEST: ${{ inputs.admin_digest }}
+          BACKEND_DIGEST: ${{ inputs.backend_digest }}
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          COMPOSE_SHA256: ${{ steps.source.outputs.compose_sha256 }}
+          IMAGE_OWNER: ${{ github.repository_owner }}
+          WEB_DIGEST: ${{ inputs.web_digest }}
+        run: |
+          printf '%s\n' \
+            "commit_sha=$COMMIT_SHA" \
+            "compose_sha256=$COMPOSE_SHA256" \
+            "backend=ghcr.io/$IMAGE_OWNER/pinjie-blog-backend@$BACKEND_DIGEST" \
+            "web=ghcr.io/$IMAGE_OWNER/pinjie-blog-web@$WEB_DIGEST" \
+            "admin=ghcr.io/$IMAGE_OWNER/pinjie-blog-admin@$ADMIN_DIGEST" \
+            >> "$GITHUB_STEP_SUMMARY"

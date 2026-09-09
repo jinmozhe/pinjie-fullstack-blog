@@ -1,0 +1,10 @@
+branch:
+  - reg: ^main$
+    buttons:
+      - name: 博客镜像发布未配置
+        description: 当前入口明确失败；配置并评审博客独立发布目标后才能启用
+        event: web_trigger_full_release
+        permissions:
+          roles:
+            - owner
+            - master
