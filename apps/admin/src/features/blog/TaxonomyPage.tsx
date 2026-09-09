@@ -28,6 +28,7 @@ export function TaxonomyPage({ kind }: { kind: TaxonomyKind }) {
   const [form] = Form.useForm<TaxonomyCreate>();
   const submitting = useRef(false);
   const query = useQuery({ queryKey: ["blog", kind, page], queryFn: () => blogApi.taxonomy(kind, page), enabled: canRead });
+  const hasRows = Boolean(query.data?.items.length);
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["blog"] });
   const save = useMutation({
     mutationFn: async (values: TaxonomyCreate) => {
@@ -58,7 +59,7 @@ export function TaxonomyPage({ kind }: { kind: TaxonomyKind }) {
       headerTitle={`${label}列表`} dataSource={query.data.items} loading={query.isFetching}
       options={{ reload: () => void query.refetch(), density: true, setting: true, fullScreen: true }}
       pagination={{ current: page, pageSize: 20, total: query.data.total, showSizeChanger: false, onChange: (next) => { setPage(next); setSelected([]); } }}
-      scroll={{ x: 650 }}
+      scroll={hasRows ? { x: 650 } : undefined} tableLayout={hasRows ? "fixed" : "auto"}
       rowSelection={canDelete ? { selectedRowKeys: selected, onChange: (keys) => setSelected(keys.map(String)), getCheckboxProps: () => ({ disabled: busy }) } : false}
       tableAlertOptionRender={() => <Button danger icon={<DeleteOutlined />} disabled={busy} onClick={() => preview.mutate([...selected])}>批量删除</Button>}
       toolBarRender={() => [canCreate && <Button key="create" type="primary" icon={<PlusOutlined />} disabled={busy} onClick={() => { save.reset(); form.resetFields(); setEditing("new"); }}>新建{label}</Button>]}
