@@ -7,7 +7,7 @@
 }
 .blog-filters > .ant-select,
 .blog-filters > .blog-taxonomy-select { width: 170px; }
-.blog-filters label { display: grid; gap: 4px; }
+.blog-date-range { width: 328px; max-width: 100%; min-width: 0; }
 .blog-taxonomy-select { min-width: 0; }
 .blog-taxonomy-select > .ant-select { width: 100%; }
 .blog-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
@@ -23,5 +23,6 @@
 .blog-cover img { max-height: 200px; object-fit: contain; display: block; margin-bottom: 8px; }
 @media (max-width: 900px) {
   .blog-editor-grid { grid-template-columns: minmax(0, 1fr); }
-  .blog-filters > .ant-select, .blog-filters > .blog-taxonomy-select { flex: 1 1 150px; }
+  .blog-filters > .ant-select, .blog-filters > .blog-taxonomy-select { min-width: 0; flex: 1 1 150px; }
+  .blog-date-range { flex: 1 1 280px; }
 }

@@ -1,9 +1,9 @@
 import type { PostBatch, PostSummary } from "@pinjie/api-client";
 import { DeleteOutlined, EditOutlined, PlusOutlined, UndoOutlined } from "@ant-design/icons";
-import { ProTable } from "@ant-design/pro-components";
+import { ProFormDateRangePicker, ProTable } from "@ant-design/pro-components";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { history } from "@umijs/max";
-import { Alert, Button, Input, Select, Space, Switch, Tabs, Tag, message } from "antd";
+import { Alert, Button, Form, Select, Space, Switch, Tabs, Tag, message } from "antd";
 import { useRef, useState } from "react";
 
 import { PageFrame, QueryState } from "@/components/PageFrame";
@@ -65,14 +65,30 @@ export default function PostsPage() {
       <Select aria-label="公开状态" allowClear placeholder="全部状态" value={filters.status ?? undefined} options={[{ value: "public", label: "公开" }, { value: "hidden", label: "隐藏" }]} onChange={(value: "public" | "hidden" | undefined) => changeFilters({ status: value })} />
       <TaxonomySelect kind="categories" disabled={!canAccess(current, "categories:read")} value={filters.category_id} onChange={(value) => changeFilters({ category_id: typeof value === "string" ? value : undefined })} />
       <TaxonomySelect kind="tags" disabled={!canAccess(current, "tags:read")} value={filters.tag_id} onChange={(value) => changeFilters({ tag_id: typeof value === "string" ? value : undefined })} />
-      <label>发布开始日<Input aria-label="发布开始日（北京时间）" type="date" value={filters.published_from ?? ""} onChange={(event) => changeFilters({ published_from: event.target.value || undefined })} /></label>
-      <label>发布结束日<Input aria-label="发布结束日（北京时间）" type="date" value={filters.published_to ?? ""} onChange={(event) => changeFilters({ published_to: event.target.value || undefined })} /></label>
+      <div className="blog-date-range">
+        <Form component={false} fields={[{ name: "publishedRange", value: [filters.published_from ?? null, filters.published_to ?? null] }]}>
+          <ProFormDateRangePicker
+            name="publishedRange"
+            noStyle
+            placeholder={["开始日期", "结束日期"]}
+            fieldProps={{
+              "aria-label": "发布日期范围（北京时间）",
+              variant: "filled",
+              format: "YYYY-MM-DD",
+              allowEmpty: [true, true],
+              style: { width: "100%" },
+              onChange: (_, dates) => changeFilters({ published_from: dates[0] || undefined, published_to: dates[1] || undefined }),
+            }}
+          />
+        </Form>
+      </div>
       <Button onClick={() => { setFilters({ page: 1, page_size: 20, deleted: filters.deleted }); setSelected([]); }}>重置筛选</Button>
     </div>
     <QueryState loading={query.isLoading} error={query.isError ? errorMessage(query.error) : undefined} onRetry={() => void query.refetch()} />
     {query.data && <ProTable<PostSummary>
       rowKey="id" className="responsive-data-table" cardProps={false} search={false} headerTitle={filters.deleted ? "回收站文章列表" : "文章列表"}
-      dataSource={query.data.items} loading={query.isFetching} scroll={{ x: 1050 }}
+      dataSource={query.data.items} loading={query.isFetching}
+      tableLayout="auto"
       options={{ reload: () => void query.refetch(), density: true, setting: true, fullScreen: true }}
       pagination={{ current: filters.page ?? 1, pageSize: 20, total: query.data.total, showSizeChanger: false, onChange: (page) => { setFilters((old) => ({ ...old, page })); setSelected([]); } }}
       rowSelection={(filters.deleted ? canRestore : canDelete) ? { selectedRowKeys: selected, onChange: (keys) => setSelected(keys.map(String)), getCheckboxProps: () => ({ disabled: busy }) } : false}
@@ -81,14 +97,14 @@ export default function PostsPage() {
         : <Button danger icon={<DeleteOutlined />} disabled={busy} onClick={() => setConfirmation(selectedBatch())}>批量删除</Button>}
       toolBarRender={() => [!filters.deleted && canAccess(current, "posts:create") && <Button key="create" type="primary" icon={<PlusOutlined />} disabled={busy} onClick={() => history.push("/blog/posts/new")}>写文章</Button>]}
       columns={[
-        { title: "标题", dataIndex: "title", ellipsis: true, width: 260 },
-        { title: "分类", render: (_, row) => row.category?.name ?? "无分类", ellipsis: true, width: 130 },
-        { title: "标签", ellipsis: true, width: 160, render: (_, row) => row.tags.map((tag) => tag.name).join("、") || "无标签" },
-        { title: "状态", width: 95, render: (_, row) => filters.deleted || !canUpdate
+        { title: "标题", dataIndex: "title", ellipsis: true, onCell: () => ({ style: { minWidth: 120, maxWidth: 0 } }) },
+        { title: "分类", render: (_, row) => row.category?.name ?? "无分类", ellipsis: true, width: "12%", onCell: () => ({ style: { minWidth: 80, maxWidth: 0 } }) },
+        { title: "标签", ellipsis: true, width: "16%", onCell: () => ({ style: { minWidth: 80, maxWidth: 0 } }), render: (_, row) => row.tags.map((tag) => tag.name).join("、") || "无标签" },
+        { title: "状态", width: "1%", render: (_, row) => filters.deleted || !canUpdate
           ? <Tag color={row.status === "public" ? "green" : "default"}>{row.status === "public" ? "公开" : "隐藏"}</Tag>
           : <Switch checked={row.status === "public"} checkedChildren="公开" unCheckedChildren="隐藏" aria-label={`${row.status === "public" ? "隐藏" : "公开"}文章：${row.title}`} disabled={busy} loading={status.isPending && status.variables?.id === row.id} onChange={() => void toggle(row)} /> },
-        { title: "首次发布", width: 180, render: (_, row) => formatBlogTime(row.published_at) },
-        { title: "更新时间", width: 180, render: (_, row) => formatBlogTime(row.updated_at) },
+        { title: "首次发布", width: "1%", render: (_, row) => formatBlogTime(row.published_at) },
+        { title: "更新时间", width: "1%", render: (_, row) => formatBlogTime(row.updated_at) },
         { title: "操作", width: "1%", render: (_, row) => <Space className="table-actions" wrap={false}>
           {!filters.deleted && canUpdate && <Button type="link" icon={<EditOutlined />} disabled={busy} onClick={() => history.push(`/blog/posts/${row.id}/edit`)}>编辑</Button>}
           {!filters.deleted && canDelete && <Button type="link" danger icon={<DeleteOutlined />} disabled={busy} onClick={() => setConfirmation(batch([row]))}>删除</Button>}
