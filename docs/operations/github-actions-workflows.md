@@ -313,6 +313,8 @@ Gitleaks 使用完整 Git 历史检查密码、API Key、Token、私钥和其他
 
 ### 9.4 Dependency review
 
+仓库必须启用 Dependency graph：进入 Settings → Advanced Security，在 Dependency graph 旁点击 Enable。若 Job 提示仓库不支持依赖审查并要求启用 Dependency graph，先检查此开关；启用并等待依赖信息可用后重跑失败检查，不跳过门禁。此开关不等同于 Dependabot 自动更新或分支必需检查配置。
+
 该 Job 只在 Pull Request 运行，比较基础分支和 PR 之间的依赖变化，并拒绝新引入的高危依赖。
 
 它回答的问题是“这次 PR 新增或升级的依赖带来了什么风险”，普通 push 和定时任务没有对应的 PR 差异，因此跳过。
