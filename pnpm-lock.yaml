@@ -5,6 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
+  markdownlint-cli2@0.23.2>smol-toml: 1.7.1
   fast-uri: 3.1.6
   path-to-regexp: 8.4.2
   qiankun: 2.10.16
@@ -7664,8 +7665,8 @@ packages:
     resolution: {integrity: sha512-qMCMfhY040cVHT43K9BFygqYbUPFZKHOg7K73mtTWJRb8pyP3fzf4Ixd5SzdEJQ6MRUg/WBnOLxghZtKKurENQ==}
     engines: {node: '>=10'}
 
-  smol-toml@1.7.0:
-    resolution: {integrity: sha512-aqVvWoyO21L23mb+drl4RmMXbf6N7FdHjAhTRA9ZBL7apWBgfWC16KjrASI+1p9GAroljyMHj6fK67i0UiTNvQ==}
+  smol-toml@1.7.1:
+    resolution: {integrity: sha512-PPlsspAZ4jbMBu5DMFhfUGDQLu/vrL4SyBROVS37x8ynnVmFIs1VPBz1Co8Xks3TvpIaZXmU85y4DrQ+UyVFoQ==}
     engines: {node: '>= 18'}
 
   sonic-boom@2.8.0:
@@ -15311,7 +15312,7 @@ snapshots:
       markdownlint: 0.41.1(supports-color@7.2.0)
       markdownlint-cli2-formatter-default: 0.0.6(markdownlint-cli2@0.23.2(supports-color@7.2.0))
       micromatch: 4.0.8
-      smol-toml: 1.7.0
+      smol-toml: 1.7.1
     transitivePeerDependencies:
       - supports-color
 
@@ -17522,7 +17523,7 @@ snapshots:
       astral-regex: 2.0.0
       is-fullwidth-code-point: 3.0.0
 
-  smol-toml@1.7.0: {}
+  smol-toml@1.7.1: {}
 
   sonic-boom@2.8.0:
     dependencies:
