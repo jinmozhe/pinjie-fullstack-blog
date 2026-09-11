@@ -36,6 +36,8 @@ async def request_context_middleware(request: Request, call_next: Callable[[Requ
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if request.url.path.startswith(f"{request.app.state.settings.api_v1_str}/blog/"):
+            response.headers["Cache-Control"] = "no-store"
         logger.bind(
             request_id=request_id,
             trace_id=trace_id,

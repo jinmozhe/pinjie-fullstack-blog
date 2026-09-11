@@ -15,6 +15,7 @@ from app.core.config import Settings
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppException
 from app.core.identifiers import new_uuid7
+from app.core.product import PUBLIC_REGISTRATION_ALLOWED
 from app.core.rate_limit import acquire_refresh_lock, enforce_rate_limit, release_refresh_lock
 from app.core.request_metadata import RequestMetadata
 from app.core.security import PasswordManager, create_access_token, new_opaque_token, token_digest
@@ -186,6 +187,8 @@ class WebAuthService(_AuthBase):
         self.sessions = SessionRepository(session)
 
     async def register(self, payload: UserRegisterIn) -> tuple[User, SessionArtifacts]:
+        if not PUBLIC_REGISTRATION_ALLOWED:
+            raise AppException(status_code=403, code=ErrorCode.REGISTRATION_CLOSED, message="本博客不提供读者注册")
         await self.enforce_login_limit(payload.username)
         password_hash = await self.password_manager.hash(payload.password)
         now = datetime.now(UTC)

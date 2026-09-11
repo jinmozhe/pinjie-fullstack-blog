@@ -49,6 +49,7 @@
 | [project-structure.md](architecture/project-structure.md)                       | 完整目录树 + 工程文件设计说明（全项目索引、全栈计划、AI 规则桥接、环境变量和锁文件等）     |
 | [backend-engineering-standard.md](architecture/backend-engineering-standard.md) | Backend 配置、Router、事务、数据、外部调用、日志、探针、测试和质量门禁的具体实施标准       |
 | [admin-engineering-standard.md](architecture/admin-engineering-standard.md) | Admin Umi/Pro 边界、请求状态、统一页面间距、响应式工具栏、列宽、开关交互与依赖准入 |
+| [web-design-standard.md](architecture/web-design-standard.md) | Web 配色、字体、间距、响应式布局、组件、正文排版、可访问性与设计接入标准 |
 | [module-boundaries.md](architecture/module-boundaries.md)                       | Backend 领域、Frontend Feature、共享包和机械依赖门禁的边界                                 |
 | [error-model.md](architecture/error-model.md)                                   | 错误分类、HTTP 契约、分层处理和禁止吞错、假成功、静默降级的规则                            |
 | [authentication-authorization.md](architecture/authentication-authorization.md) | Browser Cookie Profile、JWT、Session、CSRF、RBAC、管理操作保护和审计运行机制             |
@@ -56,7 +57,7 @@
 | [observability-reliability.md](architecture/observability-reliability.md)       | 部署等级、健康探针、安全事件、同事务审计、请求元数据 Stream、SLO、容量和恢复演练基线       |
 | [file-asset-storage.md](architecture/file-asset-storage.md)                     | 统一文件资产的存储端口、上传安全、双域鉴权、去重、删除补偿和生产卷边界                   |
 | [system-settings.md](architecture/system-settings.md)                           | 系统设置的数据模型、强类型接口、注册 Fail Closed、配置媒体恢复及三端消费边界             |
-| [blog-content.md](architecture/blog-content.md) | 博客后台文章生命周期、分类标签事务、Markdown 安全与图片引用保护 |
+| [blog-content.md](architecture/blog-content.md) | 博客内容生命周期、Markdown 安全、公开接口、搜索、服务端阅读与 SEO |
 | [全栈Monorepo架构规划原始方案.md](architecture/全栈Monorepo架构规划原始方案.md) | 从 pinjie-standard 迁移的完整原始规划方案，包含技术选型对比、电商领域设计、1Panel 部署规范 |
 
 ---

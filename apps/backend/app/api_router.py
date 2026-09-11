@@ -4,6 +4,7 @@ from app.domains.admin.auth_router import router as admin_auth_router
 from app.domains.admin.management_router import router as admin_management_router
 from app.domains.assets.router import router as assets_router
 from app.domains.auth.router import router as auth_router
+from app.domains.blog.public_router import router as public_blog_router
 from app.domains.blog.router import router as blog_router
 from app.domains.settings.router import admin_router as admin_settings_router
 from app.domains.settings.router import public_router as public_settings_router
@@ -18,5 +19,6 @@ api_router.include_router(admin_auth_router)
 api_router.include_router(admin_management_router)
 api_router.include_router(admin_settings_router)
 api_router.include_router(blog_router)
+api_router.include_router(public_blog_router)
 api_router.include_router(public_settings_router)
 api_router.include_router(system_router)

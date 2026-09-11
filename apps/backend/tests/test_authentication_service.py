@@ -3,7 +3,7 @@ authentication.py 服务层边界路径测试。
 
 使用 Mock 隔离数据库和 Redis，专注覆盖高风险的认证流程边界：
   - CSRF 校验失败
-  - 注册：注册关闭、邮箱冲突、并发 IntegrityError
+  - 注册：博客策略固定关闭，不访问注册依赖
   - Web 登录：账户禁用、锁定后二次检查失败、密码哈希升级
   - Web 刷新：并发锁冲突、Token 不存在、重放撤销 Session Family、
              已撤销、已过期、账户禁用
@@ -20,7 +20,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.core.error_codes import ErrorCode
@@ -189,111 +188,20 @@ def test_verify_session_csrf_raises_on_mismatch() -> None:
 
 
 @pytest.mark.asyncio
-async def test_web_register_raises_when_registration_setting_unavailable() -> None:
-    """注册设置读取出现 SQLAlchemyError 时应返回 503。"""
-    from sqlalchemy.exc import SQLAlchemyError
-
-    with (
-        patch("app.services.authentication.enforce_rate_limit", new=AsyncMock()),
-        patch("app.services.authentication.SystemSettingRepository") as mock_repo,
-        patch("app.services.authentication.transaction_scope") as mock_txn,
-    ):
-        mock_txn.return_value.__aenter__ = AsyncMock()
-        mock_txn.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_repo.return_value.get = AsyncMock(side_effect=SQLAlchemyError("db error"))
-
+@pytest.mark.parametrize("stored_value", [{"enabled": True}, {"enabled": False}, None])
+async def test_blog_registration_stays_closed_before_dependencies(stored_value) -> None:
+    """博客产品策略优先于历史数据库开关，不执行密码哈希或注册事务。"""
+    with patch("app.services.authentication.SystemSettingRepository") as repository:
+        repository.return_value.get = AsyncMock(return_value=SimpleNamespace(setting_value=stored_value))
         pm = MagicMock()
-        pm.hash = AsyncMock(return_value="hashed")
-        svc = _web_service(password_manager=pm)
-        with pytest.raises(AppException) as exc:
-            await svc.register(UserRegisterIn(username="newuser", password="password-12345678", display_name=None))
-        assert exc.value.status_code == 503
-        assert exc.value.code == ErrorCode.SERVICE_UNAVAILABLE
-
-
-@pytest.mark.asyncio
-async def test_web_register_raises_when_registration_closed() -> None:
-    """注册功能关闭时应返回 403 REGISTRATION_CLOSED。"""
-    with (
-        patch("app.services.authentication.enforce_rate_limit", new=AsyncMock()),
-        patch("app.services.authentication.SystemSettingRepository") as mock_repo,
-        patch("app.services.authentication.transaction_scope") as mock_txn,
-    ):
-        mock_txn.return_value.__aenter__ = AsyncMock()
-        mock_txn.return_value.__aexit__ = AsyncMock(return_value=False)
-        reg_obj = MagicMock()
-        reg_obj.setting_value = {"enabled": False}
-        mock_repo.return_value.get = AsyncMock(return_value=reg_obj)
-
-        pm = MagicMock()
-        pm.hash = AsyncMock(return_value="hashed")
-        svc = _web_service(password_manager=pm)
-        with pytest.raises(AppException) as exc:
-            await svc.register(UserRegisterIn(username="newuser", password="password-12345678", display_name=None))
-        assert exc.value.code == ErrorCode.REGISTRATION_CLOSED
-        assert exc.value.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_web_register_raises_on_email_conflict() -> None:
-    """邮箱已被占用时应返回 409 STATE_CONFLICT。"""
-    with (
-        patch("app.services.authentication.enforce_rate_limit", new=AsyncMock()),
-        patch("app.services.authentication.SystemSettingRepository") as mock_repo,
-        patch("app.services.authentication.transaction_scope") as mock_txn,
-    ):
-        mock_txn.return_value.__aenter__ = AsyncMock()
-        mock_txn.return_value.__aexit__ = AsyncMock(return_value=False)
-        reg_obj = MagicMock()
-        reg_obj.setting_value = {"enabled": True}
-        mock_repo.return_value.get = AsyncMock(return_value=reg_obj)
-
-        pm = MagicMock()
-        pm.hash = AsyncMock(return_value="hashed")
-        svc = _web_service(password_manager=pm)
-        svc.users.get_by_username = AsyncMock(return_value=None)
-        svc.users.get_by_email = AsyncMock(return_value=MagicMock())
-
-        with pytest.raises(AppException) as exc:
-            await svc.register(
-                UserRegisterIn(
-                    username="newuser",
-                    email="taken@example.com",
-                    password="password-12345678",
-                    display_name=None,
-                )
-            )
-        assert exc.value.code == ErrorCode.STATE_CONFLICT
-        assert exc.value.status_code == 409
-
-
-@pytest.mark.asyncio
-async def test_web_register_maps_integrity_error_to_409() -> None:
-    """并发注册导致 IntegrityError 时应映射为 409 USER_USERNAME_CONFLICT。"""
-    with (
-        patch("app.services.authentication.enforce_rate_limit", new=AsyncMock()),
-        patch("app.services.authentication.SystemSettingRepository") as mock_repo,
-        patch("app.services.authentication.transaction_scope") as mock_txn,
-    ):
-        mock_txn.return_value.__aenter__ = AsyncMock()
-        mock_txn.return_value.__aexit__ = AsyncMock(side_effect=IntegrityError("unique", {}, None))
-
-        reg_obj = MagicMock()
-        reg_obj.setting_value = {"enabled": True}
-        mock_repo.return_value.get = AsyncMock(return_value=reg_obj)
-
-        pm = MagicMock()
-        pm.hash = AsyncMock(return_value="hashed")
-        svc = _web_service(password_manager=pm)
-        svc.users.get_by_username = AsyncMock(return_value=None)
-        svc.users.get_by_email = AsyncMock(return_value=None)
-        svc.users.add = MagicMock()
-        svc.sessions.add_web = MagicMock()
-
-        with pytest.raises(AppException) as exc:
-            await svc.register(UserRegisterIn(username="newuser", password="password-12345678", display_name=None))
-        assert exc.value.code == ErrorCode.USER_USERNAME_CONFLICT
-        assert exc.value.status_code == 409
+        pm.hash = AsyncMock()
+        service = _web_service(password_manager=pm)
+        with pytest.raises(AppException) as error:
+            await service.register(UserRegisterIn(username="newuser", password="password-12345678"))
+        assert error.value.status_code == 403
+        assert error.value.code == ErrorCode.REGISTRATION_CLOSED
+        pm.hash.assert_not_awaited()
+        repository.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

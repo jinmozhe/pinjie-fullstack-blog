@@ -39,7 +39,8 @@ def _set_session_cookies(response: Response, request: Request, artifacts: Sessio
     response_model=ResponseModel[UserAuthSessionOut],
     status_code=201,
     dependencies=[Depends(require_web_origin)],
-    summary="注册用户账户",
+    summary="读者注册（博客策略固定关闭）",
+    responses={403: {"description": "本博客不提供读者注册"}},
 )
 async def register(
     payload: UserRegisterIn,

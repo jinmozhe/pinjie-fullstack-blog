@@ -18,6 +18,7 @@ from app.core.identifiers import new_uuid7
 from app.core.request_metadata import RequestMetadata
 from app.db.models import Admin, Asset, AuditEvent, Category, Post, PostAsset, PostTag, Tag
 from app.db.repositories.asset import AssetRepository
+from app.domains.blog.public_schemas import PublicPostQuery
 from app.domains.blog.schemas import (
     PostBatch,
     PostCreate,
@@ -29,6 +30,7 @@ from app.domains.blog.schemas import (
 )
 from app.services.assets import AssetService
 from app.services.blog import BlogService
+from app.services.public_blog import PublicBlogService
 from app.services.storage import LocalStorageProvider
 
 
@@ -236,3 +238,57 @@ async def test_batch_revision_conflict_rolls_back_every_target(blog_database):
             )
         assert (await service.get_post(posts[0].id)).deleted_at is None
         assert (await service.get_post(posts[1].id)).deleted_at is None
+
+
+@pytest.mark.integration
+async def test_public_reading_search_taxonomy_and_lifecycle_visibility(blog_database):
+    db = blog_database
+    async with db.service() as service:
+        category = await service.create_taxonomy(
+            "categories", TaxonomyCreate(name=f"公开分类{db.suffix}", slug=f"test-{db.suffix}-public")
+        )
+        tag = await service.create_taxonomy(
+            "tags", TaxonomyCreate(name=f"公开标签{db.suffix}", slug=f"test-{db.suffix}-tag")
+        )
+        post = await service.create_post(
+            PostCreate(
+                title="Literal 100%_",
+                summary="FastAPI 摘要",
+                markdown="# 正文\n\n正文独有关键词",
+                slug=f"test-{db.suffix}-public-post",
+                category_id=category.id,
+                tag_ids=[tag.id],
+            )
+        )
+        decoy = await service.create_post(
+            PostCreate(
+                title="Literal 100xy", markdown="其他正文", slug=f"test-{db.suffix}-decoy", category_id=category.id
+            )
+        )
+    async with db.factory() as session:
+        reader = PublicBlogService(session=session, settings=db.settings)
+        result = await reader.list_posts(PublicPostQuery(q="100%_", category=category.slug))
+        assert [item.slug for item in result.items] == [post.slug]
+        assert (await reader.list_posts(PublicPostQuery(q="fastapi", category=category.slug))).total == 1
+        assert (await reader.list_posts(PublicPostQuery(q="正文独有关键词", category=category.slug))).total == 0
+        assert (await reader.get_taxonomy("categories", category.slug)).post_count == 2
+        assert (await reader.get_taxonomy("tags", tag.slug)).post_count == 1
+        assert "正文独有关键词" in (await reader.get_post(post.slug)).html
+        paged = await reader.list_posts(PublicPostQuery(category=category.slug, page_size=1, page=2))
+        assert paged.total == 2 and len(paged.items) == 1
+    async with db.service() as service:
+        await service.update_status(post.id, PostStatusUpdate(revision=post.revision, status="hidden"))
+        await service.change_lifecycle(
+            PostBatch(targets=[PostTarget(id=decoy.id, revision=decoy.revision)]), action="delete"
+        )
+    async with db.factory() as session:
+        reader = PublicBlogService(session=session, settings=db.settings)
+        assert (await reader.list_posts(PublicPostQuery(category=category.slug))).total == 0
+        for slug in (post.slug, decoy.slug, "missing-post"):
+            with pytest.raises(AppException) as error:
+                await reader.get_post(slug)
+            assert error.value.status_code == 404
+        for kind, slug in (("categories", category.slug), ("tags", tag.slug)):
+            with pytest.raises(AppException) as error:
+                await reader.get_taxonomy(kind, slug)
+            assert error.value.status_code == 404

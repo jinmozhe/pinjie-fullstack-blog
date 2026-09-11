@@ -17,4 +17,10 @@ export default [
       },
     },
   },
+  {
+    files: ["src/test/matchers.d.ts"],
+    rules: {
+      "@typescript-eslint/no-empty-object-type": "off",
+    },
+  },
 ];

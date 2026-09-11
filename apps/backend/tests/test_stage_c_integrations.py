@@ -34,7 +34,6 @@ from app.db.models import (
     UserRefreshToken,
     UserSession,
 )
-from app.db.repositories import SystemSettingRepository
 from app.db.transaction import transaction_scope
 from app.domains.admin.schemas import (
     AdminBulkStatusUpdateIn,
@@ -47,7 +46,7 @@ from app.domains.admin.schemas import (
     UserBulkStatusUpdateIn,
     UserRestoreBatchIn,
 )
-from app.domains.auth.schemas import UserRegisterIn
+from app.domains.auth.schemas import UserLoginIn
 from app.services.admin_management import AdminManagementService
 from app.services.authentication import WebAuthService
 from scripts.cleanup_security_logs import _run as run_retention_cleanup
@@ -126,10 +125,17 @@ async def test_refresh_rotation_and_reuse_revokes_session_family() -> None:
     username = f"rotation-{uuid.uuid7().hex[:16]}"
     try:
         async with resources.session_factory() as session, transaction_scope(session):
-            registration = await SystemSettingRepository(session).get("registration", for_update=True)
-            assert registration is not None
-            registration.setting_value = {"enabled": True}
-            registration.revision += 1
+            user_id = new_uuid7()
+            session.add(
+                User(
+                    id=user_id,
+                    username=username,
+                    display_name="Rotation Test",
+                    password_hash=await resources.password_manager.hash("stage-c-test-password"),
+                    is_active=True,
+                    credential_version=1,
+                )
+            )
         async with resources.session_factory() as session:
             service = WebAuthService(
                 session=session,
@@ -139,9 +145,7 @@ async def test_refresh_rotation_and_reuse_revokes_session_family() -> None:
                 password_manager=resources.password_manager,
                 metadata=metadata,
             )
-            user, initial = await service.register(
-                UserRegisterIn(username=username, password="stage-c-test-password", display_name="Rotation Test")
-            )
+            user, initial = await service.login(UserLoginIn(username=username, password="stage-c-test-password"))
             user_id = user.id
         async with resources.session_factory() as session:
             rotated = await WebAuthService(

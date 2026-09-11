@@ -2,7 +2,7 @@
 
 > 文档归属：`docs/architecture/project-structure.md`
 > 适用仓库：`pinjie-fullstack-blog`
-> 最后更新：2026-09-09
+> 最后更新：2026-09-11
 
 ---
 
@@ -38,51 +38,59 @@ apps/admin/src/features/users :: UsersPage.tsx
 apps/admin/src/features/welcome :: WelcomePage.test.tsx, WelcomePage.tsx
 apps/admin/src/lib :: navigation.ts
 apps/admin/src/lib/api :: admin.test.ts, admin.ts, http.test.ts, http.ts
-apps/admin/src/test :: server.ts, setup.ts
+apps/admin/src/test :: matchers.d.ts, server.ts, setup.ts
 apps/backend :: .env.example, .importlinter, .python-version, AGENTS.md, Dockerfile, README.md, alembic.ini, pyproject.toml, uv.lock
 apps/backend/alembic :: env.py, script.py.mako
 apps/backend/alembic/versions :: 20260815_01_stage_c_identity.py, 20260820_01_request_logs_add_body.py, 20260825_01_admins_add_avatar.py, 20260825_02_assets_table.py, 20260825_03_request_logs_table_comment.py, 20260827_01_users_recycle_bin.py, 20260827_02_unify_soft_delete.py, 20260827_03_users_add_avatar.py, 20260828_01_system_settings.py, 20260829_01_fix_user_soft_delete_comments.py, README.md
 apps/backend/app :: __init__.py, api_router.py, main.py
 apps/backend/app/api :: __init__.py, dependencies.py
-apps/backend/app/core :: __init__.py, cache_keys.py, client_identity.py, config.py, context.py, cookies.py, csrf.py, error_codes.py, exceptions.py, health.py, identifiers.py, logging.py, middleware.py, openapi.py, pagination.py, password_policy.py, payload_sanitizer.py, privacy.py, rate_limit.py, redis.py, request_metadata.py, resources.py, response.py, security.py
+apps/backend/app/core :: __init__.py, cache_keys.py, client_identity.py, config.py, context.py, cookies.py, csrf.py, error_codes.py, exceptions.py, health.py, identifiers.py, logging.py, middleware.py, openapi.py, pagination.py, password_policy.py, payload_sanitizer.py, privacy.py, product.py, rate_limit.py, redis.py, request_metadata.py, resources.py, response.py, security.py
 apps/backend/app/db :: __init__.py, session.py, transaction.py
 apps/backend/app/db/models :: __init__.py, asset.py, base.py, identity.py, system_setting.py
-apps/backend/app/db/repositories :: __init__.py, asset.py, identity.py, system_setting.py
-apps/backend/app/domains :: __init__.py
+apps/backend/app/db/repositories :: __init__.py, asset.py, identity.py, public_blog.py, system_setting.py
+apps/backend/app/domains :: __init__.py, blog/
 apps/backend/app/domains/admin :: __init__.py, auth_router.py, management_router.py, permissions.py, presenters.py, schemas.py
 apps/backend/app/domains/assets :: __init__.py, router.py, schemas.py
 apps/backend/app/domains/auth :: __init__.py, router.py, schemas.py
 apps/backend/app/domains/settings :: __init__.py, router.py, schemas.py
 apps/backend/app/domains/system :: __init__.py, router.py, schemas.py
 apps/backend/app/domains/users :: __init__.py, router.py, schemas.py
-apps/backend/app/services :: __init__.py, accounts.py, admin_management.py, assets.py, authentication.py, security_events.py, settings_media.py, system_settings.py
+apps/backend/app/services :: __init__.py, accounts.py, admin_management.py, assets.py, authentication.py, public_blog.py, security_events.py, settings_media.py, system_settings.py
 apps/backend/app/services/storage :: __init__.py, base.py, local.py
 apps/backend/scripts :: __init__.py, _database_target.py, backfill_session_device_names.py, cleanup_security_logs.py, consume_request_logs.py, create_initial_admin.py, export_openapi.py, set_test_registration.py, sync_permissions.py, verify_local_database_recovery.py
 apps/backend/tests :: __init__.py, conftest.py, test_admin_user_creation.py, test_admin_write_consistency.py, test_api.py, test_assets.py, test_authentication_service.py, test_client_identity.py, test_config.py, test_core_coverage.py, test_database_recovery_script.py, test_identifiers.py, test_openapi_export.py, test_openapi_localization.py, test_password_policy.py, test_payload_sanitizer.py, test_postgres_integration.py, test_stage_b_coverage.py, test_stage_c_auth_api.py, test_stage_c_cookies.py, test_stage_c_integrations.py, test_stage_c_request_metadata.py, test_stage_c_security.py, test_system_overview.py, test_system_settings.py, test_system_settings_service.py, test_transaction.py, test_user_avatar.py
-apps/web :: .env.example, AGENTS.md, Dockerfile, README.md, eslint.config.mjs, next.config.ts, package.json, tsconfig.json, vitest.config.ts
+apps/web :: .env.example, AGENTS.md, Dockerfile, README.md, components.json, eslint.config.mjs, next.config.ts, package.json, postcss.config.mjs, tailwind.config.ts, tsconfig.json, vitest.config.ts
 apps/web/scripts :: prepare-standalone.mjs
-apps/web/src/app :: error.tsx, globals.css, icon.tsx, layout.tsx, loading.tsx, not-found.tsx, page.tsx, providers.tsx
+apps/web/src/app :: error.tsx, global-error.tsx, globals.css, layout.tsx, loading.tsx, not-found.tsx, page.tsx, providers.tsx, robots.ts
 apps/web/src/app/account :: page.tsx
 apps/web/src/app/api/v1/[...path] :: route.test.ts, route.ts
 apps/web/src/app/api/v1/system/status :: route.ts
 apps/web/src/app/login :: page.tsx
 apps/web/src/app/register :: page.tsx
+apps/web/src/app/categories/[slug] :: page.tsx
+apps/web/src/app/posts/[slug] :: page.tsx
+apps/web/src/app/search :: page.tsx
+apps/web/src/app/sitemap.xml :: route.ts
+apps/web/src/app/sitemaps/[kind]/[page] :: route.ts
+apps/web/src/app/tags/[slug] :: page.tsx
 apps/web/src/app/static/settings/[...path] :: route.test.ts, route.ts
 apps/web/src/app/static/uploads/[...path] :: route.test.ts, route.ts
 apps/web/src/components/uploader :: ImageUploader.test.tsx, ImageUploader.tsx, index.ts
-apps/web/src/features :: StageC.test.tsx
+apps/web/src/components/ui :: LICENSE.txt, button.tsx, input.tsx, pagination.tsx, sheet.tsx, skeleton.tsx
+apps/web/src/features :: StageC.test.tsx, blog/
 apps/web/src/features/account :: AccountCenter.tsx, AccountSessionRecovery.tsx
 apps/web/src/features/auth :: AuthForm.tsx, api.ts, index.ts
 apps/web/src/features/site :: SiteBrand.tsx, index.ts, profile.ts
 apps/web/src/features/system :: SystemStatusCard.test.tsx, SystemStatusCard.tsx
+apps/web/src/lib :: public-origin.ts, utils.ts
 apps/web/src/lib/api :: assets.ts, client.ts, http.test.ts, http.ts, server.test.ts, server.ts
 apps/web/src/test :: server.ts, setup.ts
 docs :: PROJECT_REQUIREMENTS.md, README.md
 docs/adr :: 0001-全栈Monorepo架构决策.md, 0002-Codex与Antigravity指令兼容决策.md, 0003-本地开发环境架构决策.md, 0004-全项目索引与计划生命周期决策.md, 0005-GitHub Wiki停用与文档单一来源决策.md, 0006-模块化单体与领域依赖边界决策.md, 0007-受控迁移兼容策略决策.md, 0008-不可变发布与生产追溯决策.md, 0009-Python运行时基线决策.md, 0010-浏览器认证会话RBAC与审计决策.md, 0011-Admin采用AntDesignProV6与UmiMax决策.md, 0012-统一文件资产采用可补偿本地存储决策.md, 0013-全局系统设置与配置媒体决策.md, 0014-共享PostgreSQL与Redis生产基础设施决策.md, 0015-派生项目计划基线重建决策.md, 0016-博客独立工程与维护边界决策.md
-docs/architecture :: admin-engineering-standard.md, authentication-authorization.md, backend-engineering-standard.md, error-model.md, file-asset-storage.md, module-boundaries.md, observability-reliability.md, project-structure.md, system-settings.md, testing-strategy.md, 全栈Monorepo架构规划原始方案.md
+docs/architecture :: admin-engineering-standard.md, authentication-authorization.md, backend-engineering-standard.md, blog-content.md, error-model.md, file-asset-storage.md, module-boundaries.md, observability-reliability.md, project-structure.md, system-settings.md, testing-strategy.md, web-design-standard.md, 全栈Monorepo架构规划原始方案.md
 docs/blueprints/commerce :: README.md
 docs/operations :: 1panel-production-runbook.md, admin-local-development-and-validation-troubleshooting.md, ai-assisted-development-workflow.md, candidate-image-validation.md, codex-windows-config-acl-governance.md, container-build-and-run.md, database-backup-restore.md, docker-desktop-redis使用指南.md, environment-variables-and-backend-local-run.md, github-actions-workflows.md, github-cnb-tcr-1panel-release-runbook.md, incident-response.md, local-dev-environment.md, pnpm使用指南.md, release-and-rollback.md, tencent-tcr-personal-cam-accounts.md, uv使用指南.md
-e2e :: helpers.ts, stage-c.spec.ts, system-status.spec.ts
+e2e :: blog-reading.spec.ts, helpers.ts, stage-c.spec.ts, system-status.spec.ts
 packages/api-client :: package.json
 packages/api-client/src :: client.gen.ts, index.ts, sdk.gen.ts, types.gen.ts
 packages/api-client/src/client :: client.gen.ts, index.ts, types.gen.ts, utils.gen.ts

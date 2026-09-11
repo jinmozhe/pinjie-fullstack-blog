@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import AppException
+from app.core.product import PUBLIC_REGISTRATION_ALLOWED
 from app.core.request_metadata import RequestMetadata
 from app.db.models import SystemSetting
 from app.db.repositories import SystemSettingRepository
@@ -77,7 +78,7 @@ class SystemSettingsService:
 
     async def registration_enabled(self, *, for_update: bool = False) -> bool:
         _, value = await self._read("registration", RegistrationSettingValue, for_update=for_update)
-        return value.enabled
+        return PUBLIC_REGISTRATION_ALLOWED and value.enabled
 
     async def update_site(self, payload: SiteSettingPatchIn) -> AdminSiteSettingRead:
         actor_id = self._require_actor()
@@ -99,6 +100,8 @@ class SystemSettingsService:
 
     async def update_registration(self, payload: RegistrationSettingPatchIn) -> AdminRegistrationSettingRead:
         actor_id = self._require_actor()
+        if payload.enabled and not PUBLIC_REGISTRATION_ALLOWED:
+            raise AppException(status_code=403, code=ErrorCode.REGISTRATION_CLOSED, message="本博客不提供读者注册")
         changed_fields: dict[str, object] = {}
 
         async def operation() -> AdminRegistrationSettingRead:
@@ -241,7 +244,7 @@ class SystemSettingsService:
         self, setting: SystemSetting, value: RegistrationSettingValue
     ) -> AdminRegistrationSettingRead:
         return AdminRegistrationSettingRead(
-            enabled=value.enabled,
+            enabled=PUBLIC_REGISTRATION_ALLOWED and value.enabled,
             revision=setting.revision,
             updated_at=setting.updated_at,
             updated_by=await self._admin_summary(setting.updated_by_id),

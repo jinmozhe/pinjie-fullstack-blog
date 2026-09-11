@@ -1,6 +1,6 @@
 # 认证、授权与审计边界
 
-博客 Cookie 使用 `pinjie_blog_web_*` 和 `pinjie_blog_admin_*` 名称，与母版隔离；前端、BFF 和后端必须同步维护，不兼容旧 Cookie。当前保留通用身份模块，公开阅读阶段再移除读者入口。
+博客 Cookie 使用 `pinjie_blog_web_*` 和 `pinjie_blog_admin_*` 名称，与母版隔离；前端、BFF 和后端必须同步维护，不兼容旧 Cookie。公开 Web 已关闭登录、注册和账户页面，通用身份模块保留供既有管理能力使用，后台管理员认证保持可用。博客固定禁止公开注册，数据库历史开关不能重新放开该能力。
 
 ## 1. 目标
 
@@ -59,7 +59,7 @@
 
 普通用户有两种独立创建来源：
 
-- Web 公开注册受数据库 `system_settings.registration.enabled` 控制。注册事务对配置行取得共享锁，配置缺失、无效或数据库不可用时明确失败并保持关闭；注册成功后创建 Web Session、Refresh Token 和登录安全事件。
+- Web 公开注册由 `app/core/product.py` 的博客产品策略固定关闭，Service 在密码哈希、限流和注册事务前返回 403 REGISTRATION_CLOSED。数据库历史 registration 配置不能覆盖产品策略，管理员尝试启用也明确拒绝；通用注册事务代码保留但当前产品不执行。
 - Admin 创建用户使用 `POST /api/v1/admin/users`，受 `users:create`、管理员会话和 CSRF 保护，不受公开注册开关影响。该流程只创建账户和 `users:create` 审计事件，不创建 Web Session、Refresh Token 或公开注册登录事件。
 
 两种来源复用相同的用户名、邮箱唯一性和密码规则。软删除账户继续占用用户名与邮箱，管理员应恢复原账户，不能用同一标识创建新账户。Admin 创建审计只记录目标、启用状态和可选资料是否存在，不保存初始密码、密码摘要或邮箱明文。
@@ -68,7 +68,7 @@
 
 管理员本人资料和管理员管理资料入口继续接受头像 URL。站内上传路径及已配置 Web/Admin Origin 下的上传地址先归一化为资产公开路径，移除查询参数和片段，再按唯一文件键校验并锁定资产；资产已删除时拒绝保存。绑定与资产删除共用资产行锁，事务结束前保持锁定，已提交头像引用阻止删除。其他外部 URL 和非资产静态路径保持原有行为，清空头像解除引用。
 
-公共端点 `GET /api/v1/system/capabilities` 只返回 `registration_enabled`。Web 在能力关闭时隐藏注册入口并把 `/register` 重定向到登录页；查询失败时按未知且不开放处理，并显示服务不可用状态。Backend 的公开注册端点始终执行权威开关校验，前端隐藏不承担安全控制。
+公共端点 `GET /api/v1/system/capabilities` 只返回 `registration_enabled`，配置可读取时在博客中恒为 false，配置故障仍明确报错。Web 的 `/register`、`/login` 和 `/account` 返回 404，不再重定向到读者登录页。Backend 的公开注册端点独立执行产品策略，前端隐藏不承担安全控制。
 
 系统设置使用四项独立权限：`settings:site:read`、`settings:site:update`、`settings:registration:read` 和 `settings:registration:update`。Admin 设置写接口同时要求管理员会话、准确权限、CSRF、revision 校验和审计；LOGO 上传与删除归站点更新权限，不复用文件资产权限。
 
