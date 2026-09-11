@@ -153,8 +153,8 @@ async def test_system_settings_reads_public_and_admin_views(tmp_path: Path) -> N
     assert admin_site.updated_by.display_name == "Settings Admin"
     assert profile.logo_url == admin_site.logo.url
     assert profile.name == "Pinjie"
-    assert admin_registration.enabled is True
-    assert registration_enabled is True
+    assert admin_registration.enabled is False
+    assert registration_enabled is False
     assert repository.get.await_args_list[-1].kwargs == {"for_update": True}
 
 
@@ -208,16 +208,19 @@ async def test_system_settings_updates_values_and_enforces_revision(tmp_path: Pa
     monkeypatch.setattr(AuditCoordinator, "execute", _execute_audit_operation)
 
     updated_site = await service.update_site(SiteSettingPatchIn(revision=3, name="Updated Pinjie"))
-    updated_registration = await service.update_registration(RegistrationSettingPatchIn(revision=8, enabled=True))
+    with pytest.raises(AppException) as closed:
+        await service.update_registration(RegistrationSettingPatchIn(revision=8, enabled=True))
+    assert closed.value.code == ErrorCode.REGISTRATION_CLOSED
+    updated_registration = await service.update_registration(RegistrationSettingPatchIn(revision=8, enabled=False))
 
     assert updated_site.name == "Updated Pinjie"
     assert updated_site.revision == 4
     assert site.updated_by_id == actor_id
-    assert updated_registration.enabled is True
+    assert updated_registration.enabled is False
     assert updated_registration.revision == 9
 
     unchanged_site = await service.update_site(SiteSettingPatchIn(revision=4, name="Updated Pinjie"))
-    unchanged_registration = await service.update_registration(RegistrationSettingPatchIn(revision=9, enabled=True))
+    unchanged_registration = await service.update_registration(RegistrationSettingPatchIn(revision=9, enabled=False))
     assert unchanged_site.revision == 5
     assert unchanged_registration.revision == 10
 

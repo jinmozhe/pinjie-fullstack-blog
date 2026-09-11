@@ -3,8 +3,8 @@
 ## 作用范围与技术栈
 
 - 本文件适用于 `apps/web/**`，并继承仓库根 `AGENTS.md`。
-- Web 是 C 端用户应用，采用 Next.js App Router、React、TypeScript、Tailwind CSS、TanStack Query 和 Zustand。
-- 新增定制 UI 时以 shadcn/ui 为组件标准、Radix UI 为无样式交互底层、项目设计 tokens 控制视觉、lucide-react 提供图标。新增依赖前先确认仓库现状并更新 workspace 锁文件。
+- Web 是匿名博客阅读应用，采用 Next.js App Router、React、TypeScript、Tailwind CSS 3、shadcn 本地组件、Radix UI 和 lucide-react。TanStack Query 与 Zustand 仅用于需要的客户端交互，公开内容默认由 Server Components 读取。
+- 新增依赖前先确认仓库现状，遵守依赖准入并更新 workspace 锁文件。
 
 ## 目录与渲染边界
 
@@ -21,14 +21,12 @@
 - 服务端请求使用仅服务端可见的后端地址，浏览器请求只使用公开地址。`NEXT_PUBLIC_` 变量会进入客户端产物，严禁保存密钥。
 - 浏览器认证优先使用具备 `HttpOnly`、`Secure` 和合适 `SameSite` 属性的 Cookie，并设计 CSRF 防护。Token 禁止进入 `localStorage`、Zustand、URL 和页面源码。
 - 需要收录的页面必须提供准确的静态或动态 Metadata、语义化标题、canonical 和必要的结构化数据，并保持 SSR 首屏内容可用。
+- Next.js 动态 params 按 Promise 解包；根布局维护标题模板，页面维护自己的 canonical，嵌套 Metadata 按浅合并规则明确继承。公开内容按请求读取并共用可见性过滤；读取与 SEO 机制统一见 [博客内容架构](../../docs/architecture/blog-content.md)。
 - `next.config.ts` 保持 `output: "standalone"`，满足生产容器部署。容器部署默认不依赖进程内 ISR 缓存；需要增量缓存时先设计共享缓存和失效策略。
 
 ## UI 与可访问性
 
-- 先维护颜色、间距、字体、圆角、阴影等设计 tokens，再扩展基础组件和页面，避免页面内散落任意值。
-- 使用语义化 HTML、键盘可操作控件、可见焦点、正确标签和足够对比度。图标按钮必须有可访问名称或 Tooltip。
-- 页面必须覆盖加载、空数据、失败和成功反馈。移动端与桌面端均不得出现横向溢出、文字遮挡、卡片套卡片和失控布局。
-- 避免一屏只有宣传文案。首屏优先提供目标用户可直接使用的真实体验，并保持与派生业务定位一致。
+- 涉及 Web 页面、布局、组件、样式及交互的设计、实现、修改和评审，必须读取并遵守整套 [Web 统一设计标准](../../docs/architecture/web-design-standard.md)，并落实与当前变更相关的条款。颜色、字体、间距、组件、响应式、正文排版和可访问性详细规则仅在该标准维护。
 
 ## 验证
 

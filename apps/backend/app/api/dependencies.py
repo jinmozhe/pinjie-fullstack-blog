@@ -26,6 +26,7 @@ from app.services.admin_management import AdminManagementService
 from app.services.assets import AssetService, AssetUploader
 from app.services.authentication import AdminAuthService, WebAuthService
 from app.services.blog import BlogService
+from app.services.public_blog import PublicBlogService
 from app.services.settings_media import SettingsMediaStore
 from app.services.storage import StorageProvider
 from app.services.system_settings import SystemSettingsService
@@ -73,6 +74,13 @@ async def get_db_session(request: Request) -> AsyncIterator[AsyncSession]:
 
 
 DatabaseSession = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+def get_public_blog_service(request: Request, session: DatabaseSession) -> PublicBlogService:
+    return PublicBlogService(session=session, settings=get_request_settings(request))
+
+
+PublicBlogServiceDependency = Annotated[PublicBlogService, Depends(get_public_blog_service)]
 
 
 def require_admin_access_token(

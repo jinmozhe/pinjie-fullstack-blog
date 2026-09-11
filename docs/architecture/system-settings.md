@@ -5,7 +5,7 @@
 系统设置提供跨业务可复用的运行时配置。第一阶段包含：
 
 - `site`：Web 站点名称、LOGO、标题、关键词和描述。
-- `registration`：Web 是否允许公开注册。
+- `registration`：保留通用注册配置，博客产品策略固定禁止公开注册。
 
 Admin 的 `Pinjie Console` 名称、登录页与控制台 LOGO 不读取站点设置。
 
@@ -29,7 +29,7 @@ Admin 的 `Pinjie Console` 名称、登录页与控制台 LOGO 不读取站点�
 
 `site` 值固定包含 `name`、`logo`、`title`、`keywords`、`description`。关键词按 NFC 归一、去空、保持顺序去重，最多 20 项，每项最多 64 个字符。LOGO 元数据只保存相对路径、服务端确认 MIME、大小和 SHA-256。
 
-`registration` 值只包含严格布尔值 `enabled`。公开注册 POST 在创建用户的同一数据库事务中对该行取得共享锁并检查开关；Admin 写入取得排他锁，因此关闭操作与并发注册具有明确顺序。
+`registration` 值只包含严格布尔值 `enabled`。博客产品策略优先，公开能力与后台读取均报告有效状态 false，管理员请求启用返回 403 REGISTRATION_CLOSED；旧数据无需迁移。管理员仍可按 revision 保存关闭状态，保留事务和审计。策略与服务端入口详见 [认证边界](authentication-authorization.md)。
 
 ## 4. 接口
 
@@ -40,7 +40,7 @@ GET /api/v1/system/site-profile
 GET /api/v1/system/capabilities
 ```
 
-SiteProfile 一次返回公开站点完整资料，不暴露内部路径、哈希、revision 或修改者。两个公共配置响应使用 `Cache-Control: no-store`。读取失败返回 503；Web 对品牌展示使用内置回退，对注册状态按不可用且关闭处理。
+SiteProfile 一次返回公开站点完整资料，不暴露内部路径、哈希、revision 或修改者。两个公共配置响应使用 `Cache-Control: no-store`。读取失败返回 503；当前公开 Web 明确展示加载失败，不使用内置示例品牌回退。
 
 Admin 接口：
 
@@ -73,7 +73,7 @@ Admin `/settings` 固定显示“站点设置”和“注册设置”两个 Tab�
 
 移除站点 LOGO 必须先显示统一标准警告弹窗，说明移除影响和重新上传的恢复方式，取消不请求接口。确认固定打开弹窗时的 revision，提交期间禁止重复确认及关闭，并阻止同组保存或上传。失败保留 LOGO、站点草稿和确认框并显示错误；发生 revision 冲突后必须取消、加载最新配置并重新确认，不自动用新 revision 重试删除。成功后才更新预览并关闭弹窗，完整交互约束见 [Admin 工程实施标准](admin-engineering-standard.md)。
 
-Web 的 server-only `fetchSiteProfile()` 在同一次服务端渲染中去重。首页、登录、注册和用户中心使用站点名称与 LOGO，根 Metadata 使用标题、关键词和描述。`/static/settings` 同源代理只允许固定 LOGO 路径和正整数 revision，并返回长期 immutable 缓存。
+Web 的 `features/blog/data.ts` 在同一次服务端渲染中去重读取站点设置；公开首页与阅读导航使用站点名称与 LOGO，Metadata 使用标题和描述。旧通用模块的 fetchSiteProfile 不再是公开阅读入口。`/static/settings` 同源代理只允许固定 LOGO 路径和正整数 revision，并返回长期 immutable 缓存。
 
 ## 7. 部署、备份与扩展
 

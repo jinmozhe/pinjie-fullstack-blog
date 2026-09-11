@@ -1142,6 +1142,78 @@ export type PageResultPostSummary = {
 };
 
 /**
+ * PageResult[PublicPostSummary]
+ */
+export type PageResultPublicPostSummary = {
+    /**
+     * Items
+     *
+     * 当前分页中的资源列表
+     */
+    items: Array<PublicPostSummary>;
+    /**
+     * Page
+     *
+     * 当前页码，从 1 开始
+     */
+    page: number;
+    /**
+     * Page Size
+     *
+     * 每页资源数量
+     */
+    page_size: number;
+    /**
+     * Total
+     *
+     * 符合条件的资源总数
+     */
+    total: number;
+    /**
+     * Total Pages
+     *
+     * 符合条件的总页数
+     */
+    total_pages: number;
+};
+
+/**
+ * PageResult[PublicTaxonomyCount]
+ */
+export type PageResultPublicTaxonomyCount = {
+    /**
+     * Items
+     *
+     * 当前分页中的资源列表
+     */
+    items: Array<PublicTaxonomyCount>;
+    /**
+     * Page
+     *
+     * 当前页码，从 1 开始
+     */
+    page: number;
+    /**
+     * Page Size
+     *
+     * 每页资源数量
+     */
+    page_size: number;
+    /**
+     * Total
+     *
+     * 符合条件的资源总数
+     */
+    total: number;
+    /**
+     * Total Pages
+     *
+     * 符合条件的总页数
+     */
+    total_pages: number;
+};
+
+/**
  * PageResult[RequestLogRead]
  */
 export type PageResultRequestLogRead = {
@@ -1596,6 +1668,122 @@ export type PostUpdate = {
      * Revision
      */
     revision: number;
+};
+
+/**
+ * PublicPostRead
+ */
+export type PublicPostRead = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Slug
+     */
+    slug: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    category: PublicTaxonomy | null;
+    /**
+     * Tags
+     */
+    tags: Array<PublicTaxonomy>;
+    /**
+     * Cover Url
+     */
+    cover_url: string | null;
+    /**
+     * Published At
+     */
+    published_at: string;
+    /**
+     * Updated At
+     *
+     * 最近更新时间
+     */
+    updated_at: string;
+    /**
+     * Html
+     *
+     * 与后台预览共用安全规则生成的正文 HTML
+     */
+    html: string;
+};
+
+/**
+ * PublicPostSummary
+ */
+export type PublicPostSummary = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Slug
+     */
+    slug: string;
+    /**
+     * Summary
+     */
+    summary: string;
+    category: PublicTaxonomy | null;
+    /**
+     * Tags
+     */
+    tags: Array<PublicTaxonomy>;
+    /**
+     * Cover Url
+     */
+    cover_url: string | null;
+    /**
+     * Published At
+     */
+    published_at: string;
+    /**
+     * Updated At
+     *
+     * 最近更新时间
+     */
+    updated_at: string;
+};
+
+/**
+ * PublicTaxonomy
+ */
+export type PublicTaxonomy = {
+    /**
+     * Name
+     *
+     * 资源名称
+     */
+    name: string;
+    /**
+     * Slug
+     */
+    slug: string;
+};
+
+/**
+ * PublicTaxonomyCount
+ */
+export type PublicTaxonomyCount = {
+    /**
+     * Name
+     *
+     * 资源名称
+     */
+    name: string;
+    /**
+     * Slug
+     */
+    slug: string;
+    /**
+     * Post Count
+     */
+    post_count: number;
 };
 
 /**
@@ -2267,6 +2455,62 @@ export type ResponseModelPageResultPostSummary = {
 };
 
 /**
+ * ResponseModel[PageResult[PublicPostSummary]]
+ */
+export type ResponseModelPageResultPublicPostSummary = {
+    /**
+     * Code
+     *
+     * 稳定程序代码
+     */
+    code: string;
+    /**
+     * Message
+     *
+     * 面向调用方的中文结果消息
+     */
+    message: string;
+    /**
+     * 响应业务数据
+     */
+    data: PageResultPublicPostSummary;
+    /**
+     * Request Id
+     *
+     * 用于定位本次请求的唯一标识
+     */
+    request_id: string;
+};
+
+/**
+ * ResponseModel[PageResult[PublicTaxonomyCount]]
+ */
+export type ResponseModelPageResultPublicTaxonomyCount = {
+    /**
+     * Code
+     *
+     * 稳定程序代码
+     */
+    code: string;
+    /**
+     * Message
+     *
+     * 面向调用方的中文结果消息
+     */
+    message: string;
+    /**
+     * 响应业务数据
+     */
+    data: PageResultPublicTaxonomyCount;
+    /**
+     * Request Id
+     *
+     * 用于定位本次请求的唯一标识
+     */
+    request_id: string;
+};
+
+/**
  * ResponseModel[PageResult[RequestLogRead]]
  */
 export type ResponseModelPageResultRequestLogRead = {
@@ -2398,6 +2642,62 @@ export type ResponseModelPostRead = {
      * 响应业务数据
      */
     data: PostRead;
+    /**
+     * Request Id
+     *
+     * 用于定位本次请求的唯一标识
+     */
+    request_id: string;
+};
+
+/**
+ * ResponseModel[PublicPostRead]
+ */
+export type ResponseModelPublicPostRead = {
+    /**
+     * Code
+     *
+     * 稳定程序代码
+     */
+    code: string;
+    /**
+     * Message
+     *
+     * 面向调用方的中文结果消息
+     */
+    message: string;
+    /**
+     * 响应业务数据
+     */
+    data: PublicPostRead;
+    /**
+     * Request Id
+     *
+     * 用于定位本次请求的唯一标识
+     */
+    request_id: string;
+};
+
+/**
+ * ResponseModel[PublicTaxonomyCount]
+ */
+export type ResponseModelPublicTaxonomyCount = {
+    /**
+     * Code
+     *
+     * 稳定程序代码
+     */
+    code: string;
+    /**
+     * Message
+     *
+     * 面向调用方的中文结果消息
+     */
+    message: string;
+    /**
+     * 响应业务数据
+     */
+    data: PublicTaxonomyCount;
     /**
      * Request Id
      *
@@ -3379,6 +3679,11 @@ export type TaxonomyImpact = {
 };
 
 /**
+ * TaxonomyKind
+ */
+export type TaxonomyKind = 'categories' | 'tags';
+
+/**
  * TaxonomyRead
  */
 export type TaxonomyRead = {
@@ -3716,6 +4021,10 @@ export type RegisterApiV1AuthRegisterPostData = {
 };
 
 export type RegisterApiV1AuthRegisterPostErrors = {
+    /**
+     * 本博客不提供读者注册
+     */
+    403: unknown;
     /**
      * 请求参数校验失败
      */
@@ -6659,6 +6968,175 @@ export type DeleteTagsApiV1AdminBlogTagsDeleteBatchPostResponses = {
 };
 
 export type DeleteTagsApiV1AdminBlogTagsDeleteBatchPostResponse = DeleteTagsApiV1AdminBlogTagsDeleteBatchPostResponses[keyof DeleteTagsApiV1AdminBlogTagsDeleteBatchPostResponses];
+
+export type PublicPostsApiV1BlogPostsGetData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+        /**
+         * Q
+         *
+         * 标题和摘要的字面包含查询，不检索正文
+         */
+        q?: string;
+        /**
+         * Category
+         */
+        category?: string | null;
+        /**
+         * Tag
+         */
+        tag?: string | null;
+    };
+    url: '/api/v1/blog/posts';
+};
+
+export type PublicPostsApiV1BlogPostsGetErrors = {
+    /**
+     * 内容不存在或不可公开访问
+     */
+    404: unknown;
+    /**
+     * 查询参数无效
+     */
+    422: unknown;
+    /**
+     * 文章服务暂时不可用
+     */
+    503: unknown;
+};
+
+export type PublicPostsApiV1BlogPostsGetResponses = {
+    /**
+     * 请求成功
+     */
+    200: ResponseModelPageResultPublicPostSummary;
+};
+
+export type PublicPostsApiV1BlogPostsGetResponse = PublicPostsApiV1BlogPostsGetResponses[keyof PublicPostsApiV1BlogPostsGetResponses];
+
+export type PublicPostApiV1BlogPostsSlugGetData = {
+    body?: never;
+    path: {
+        /**
+         * Slug
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/api/v1/blog/posts/{slug}';
+};
+
+export type PublicPostApiV1BlogPostsSlugGetErrors = {
+    /**
+     * 内容不存在或不可公开访问
+     */
+    404: unknown;
+    /**
+     * 查询参数无效
+     */
+    422: unknown;
+    /**
+     * 文章服务暂时不可用
+     */
+    503: unknown;
+};
+
+export type PublicPostApiV1BlogPostsSlugGetResponses = {
+    /**
+     * 请求成功
+     */
+    200: ResponseModelPublicPostRead;
+};
+
+export type PublicPostApiV1BlogPostsSlugGetResponse = PublicPostApiV1BlogPostsSlugGetResponses[keyof PublicPostApiV1BlogPostsSlugGetResponses];
+
+export type PublicTaxonomiesApiV1BlogTaxonomyKindGetData = {
+    body?: never;
+    path: {
+        kind: TaxonomyKind;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+    };
+    url: '/api/v1/blog/taxonomy/{kind}';
+};
+
+export type PublicTaxonomiesApiV1BlogTaxonomyKindGetErrors = {
+    /**
+     * 内容不存在或不可公开访问
+     */
+    404: unknown;
+    /**
+     * 查询参数无效
+     */
+    422: unknown;
+    /**
+     * 文章服务暂时不可用
+     */
+    503: unknown;
+};
+
+export type PublicTaxonomiesApiV1BlogTaxonomyKindGetResponses = {
+    /**
+     * 请求成功
+     */
+    200: ResponseModelPageResultPublicTaxonomyCount;
+};
+
+export type PublicTaxonomiesApiV1BlogTaxonomyKindGetResponse = PublicTaxonomiesApiV1BlogTaxonomyKindGetResponses[keyof PublicTaxonomiesApiV1BlogTaxonomyKindGetResponses];
+
+export type PublicTaxonomyApiV1BlogTaxonomyKindSlugGetData = {
+    body?: never;
+    path: {
+        kind: TaxonomyKind;
+        /**
+         * Slug
+         */
+        slug: string;
+    };
+    query?: never;
+    url: '/api/v1/blog/taxonomy/{kind}/{slug}';
+};
+
+export type PublicTaxonomyApiV1BlogTaxonomyKindSlugGetErrors = {
+    /**
+     * 内容不存在或不可公开访问
+     */
+    404: unknown;
+    /**
+     * 查询参数无效
+     */
+    422: unknown;
+    /**
+     * 文章服务暂时不可用
+     */
+    503: unknown;
+};
+
+export type PublicTaxonomyApiV1BlogTaxonomyKindSlugGetResponses = {
+    /**
+     * 请求成功
+     */
+    200: ResponseModelPublicTaxonomyCount;
+};
+
+export type PublicTaxonomyApiV1BlogTaxonomyKindSlugGetResponse = PublicTaxonomyApiV1BlogTaxonomyKindSlugGetResponses[keyof PublicTaxonomyApiV1BlogTaxonomyKindSlugGetResponses];
 
 export type GetSiteProfileApiV1SystemSiteProfileGetData = {
     body?: never;

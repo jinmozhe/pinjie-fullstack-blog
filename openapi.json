@@ -11,7 +11,7 @@
         "tags": [
           "用户认证"
         ],
-        "summary": "注册用户账户",
+        "summary": "读者注册（博客策略固定关闭）",
         "operationId": "register_api_v1_auth_register_post",
         "requestBody": {
           "content": {
@@ -33,6 +33,9 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "本博客不提供读者注册"
           },
           "422": {
             "description": "请求参数校验失败",
@@ -5806,6 +5809,273 @@
         }
       }
     },
+    "/api/v1/blog/posts": {
+      "get": {
+        "tags": [
+          "公开博客"
+        ],
+        "summary": "分页读取或搜索公开文章标题和摘要",
+        "operationId": "public_posts_api_v1_blog_posts_get",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 12,
+              "title": "Page Size"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "标题和摘要的字面包含查询，不检索正文",
+              "default": "",
+              "title": "Q"
+            },
+            "description": "标题和摘要的字面包含查询，不检索正文"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120,
+                  "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_PageResult_PublicPostSummary__"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在或不可公开访问"
+          },
+          "422": {
+            "description": "查询参数无效"
+          },
+          "503": {
+            "description": "文章服务暂时不可用"
+          }
+        }
+      }
+    },
+    "/api/v1/blog/posts/{slug}": {
+      "get": {
+        "tags": [
+          "公开博客"
+        ],
+        "summary": "读取公开文章与安全渲染正文",
+        "operationId": "public_post_api_v1_blog_posts__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_PublicPostRead_"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在或不可公开访问"
+          },
+          "422": {
+            "description": "查询参数无效"
+          },
+          "503": {
+            "description": "文章服务暂时不可用"
+          }
+        }
+      }
+    },
+    "/api/v1/blog/taxonomy/{kind}": {
+      "get": {
+        "tags": [
+          "公开博客"
+        ],
+        "summary": "分页读取有公开文章的分类或标签",
+        "operationId": "public_taxonomies_api_v1_blog_taxonomy__kind__get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaxonomyKind"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 100,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_PageResult_PublicTaxonomyCount__"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在或不可公开访问"
+          },
+          "422": {
+            "description": "查询参数无效"
+          },
+          "503": {
+            "description": "文章服务暂时不可用"
+          }
+        }
+      }
+    },
+    "/api/v1/blog/taxonomy/{kind}/{slug}": {
+      "get": {
+        "tags": [
+          "公开博客"
+        ],
+        "summary": "读取公开分类或标签名称与文章数量",
+        "operationId": "public_taxonomy_api_v1_blog_taxonomy__kind___slug__get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TaxonomyKind"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "请求成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResponseModel_PublicTaxonomyCount_"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "内容不存在或不可公开访问"
+          },
+          "422": {
+            "description": "查询参数无效"
+          },
+          "503": {
+            "description": "文章服务暂时不可用"
+          }
+        }
+      }
+    },
     "/api/v1/system/site-profile": {
       "get": {
         "tags": [
@@ -7518,6 +7788,100 @@
         ],
         "title": "PageResult[PostSummary]"
       },
+      "PageResult_PublicPostSummary_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicPostSummary"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "当前分页中的资源列表"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "description": "当前页码，从 1 开始"
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "description": "每页资源数量"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "符合条件的资源总数"
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Pages",
+            "description": "符合条件的总页数"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total",
+          "total_pages"
+        ],
+        "title": "PageResult[PublicPostSummary]"
+      },
+      "PageResult_PublicTaxonomyCount_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTaxonomyCount"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "当前分页中的资源列表"
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Page",
+            "description": "当前页码，从 1 开始"
+          },
+          "page_size": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "description": "每页资源数量"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total",
+            "description": "符合条件的资源总数"
+          },
+          "total_pages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Pages",
+            "description": "符合条件的总页数"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total",
+          "total_pages"
+        ],
+        "title": "PageResult[PublicTaxonomyCount]"
+      },
       "PageResult_RequestLogRead_": {
         "properties": {
           "items": {
@@ -8240,6 +8604,194 @@
           "revision"
         ],
         "title": "PostUpdate"
+      },
+      "PublicPostRead": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicTaxonomy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTaxonomy"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "cover_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Url"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "最近更新时间"
+          },
+          "html": {
+            "type": "string",
+            "title": "Html",
+            "description": "与后台预览共用安全规则生成的正文 HTML"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "slug",
+          "summary",
+          "category",
+          "tags",
+          "cover_url",
+          "published_at",
+          "updated_at",
+          "html"
+        ],
+        "title": "PublicPostRead"
+      },
+      "PublicPostSummary": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicTaxonomy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/PublicTaxonomy"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "cover_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Url"
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Published At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At",
+            "description": "最近更新时间"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "slug",
+          "summary",
+          "category",
+          "tags",
+          "cover_url",
+          "published_at",
+          "updated_at"
+        ],
+        "title": "PublicPostSummary"
+      },
+      "PublicTaxonomy": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "资源名称"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "PublicTaxonomy"
+      },
+      "PublicTaxonomyCount": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "资源名称"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "post_count": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Post Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "slug",
+          "post_count"
+        ],
+        "title": "PublicTaxonomyCount"
       },
       "ReadinessStatus": {
         "properties": {
@@ -9038,6 +9590,70 @@
         ],
         "title": "ResponseModel[PageResult[PostSummary]]"
       },
+      "ResponseModel_PageResult_PublicPostSummary__": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "稳定程序代码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "面向调用方的中文结果消息"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResult_PublicPostSummary_",
+            "description": "响应业务数据"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "用于定位本次请求的唯一标识"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data",
+          "request_id"
+        ],
+        "title": "ResponseModel[PageResult[PublicPostSummary]]"
+      },
+      "ResponseModel_PageResult_PublicTaxonomyCount__": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "稳定程序代码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "面向调用方的中文结果消息"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PageResult_PublicTaxonomyCount_",
+            "description": "响应业务数据"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "用于定位本次请求的唯一标识"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data",
+          "request_id"
+        ],
+        "title": "ResponseModel[PageResult[PublicTaxonomyCount]]"
+      },
       "ResponseModel_PageResult_RequestLogRead__": {
         "properties": {
           "code": {
@@ -9197,6 +9813,70 @@
           "request_id"
         ],
         "title": "ResponseModel[PostRead]"
+      },
+      "ResponseModel_PublicPostRead_": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "稳定程序代码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "面向调用方的中文结果消息"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicPostRead",
+            "description": "响应业务数据"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "用于定位本次请求的唯一标识"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data",
+          "request_id"
+        ],
+        "title": "ResponseModel[PublicPostRead]"
+      },
+      "ResponseModel_PublicTaxonomyCount_": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "description": "稳定程序代码"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "面向调用方的中文结果消息"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PublicTaxonomyCount",
+            "description": "响应业务数据"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id",
+            "description": "用于定位本次请求的唯一标识"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data",
+          "request_id"
+        ],
+        "title": "ResponseModel[PublicTaxonomyCount]"
       },
       "ResponseModel_RefreshSessionOut_": {
         "properties": {
@@ -10512,6 +11192,14 @@
         ],
         "title": "TaxonomyImpact"
       },
+      "TaxonomyKind": {
+        "type": "string",
+        "enum": [
+          "categories",
+          "tags"
+        ],
+        "title": "TaxonomyKind"
+      },
       "TaxonomyRead": {
         "properties": {
           "name": {
@@ -11013,6 +11701,10 @@
     }
   },
   "tags": [
+    {
+      "name": "公开博客",
+      "description": "匿名读取公开文章、分类标签、标题摘要搜索与安全正文。"
+    },
     {
       "name": "博客管理",
       "description": "文章、分类标签、回收站和安全 Markdown 预览。"

@@ -17,4 +17,4 @@
 
 | 路径 | 状态 | 结果 | 影响范围 | 用途 |
 | --- | --- | --- | --- | --- |
-| `plans/2026-09-09_博客首版全栈实施计划.md` | 实施中 | 不适用 | Backend、Admin、Web、API Client、Database、Deployment、Documentation | 第一阶段完成；第二阶段后台写作源码与轻量检查完成，内容迁移和动态验收未执行；第三阶段公开阅读尚未实施 |
+| `plans/2026-09-09_博客首版全栈实施计划.md` | 实施中 | 不适用 | Backend、Admin、Web、API Client、Database、Deployment、Documentation | 第一阶段完成；第二阶段后台写作及第三阶段统一设计、公开阅读、搜索与 SEO 源码完成，迁移和动态验收未执行 |

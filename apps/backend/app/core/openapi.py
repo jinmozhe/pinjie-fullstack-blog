@@ -1,6 +1,7 @@
 from typing import Any
 
 OPENAPI_TAGS = [
+    {"name": "公开博客", "description": "匿名读取公开文章、分类标签、标题摘要搜索与安全正文。"},
     {"name": "博客管理", "description": "文章、分类标签、回收站和安全 Markdown 预览。"},
     {"name": "用户认证", "description": "用户注册、登录、刷新会话和退出登录接口。"},
     {"name": "用户账户", "description": "当前用户资料、密码、登录会话和账户管理接口。"},
